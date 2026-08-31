@@ -1,0 +1,2428 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Content Planner</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --surface-2: #fbfbfd;
+    --surface-3: #f0f0f2;
+    --ink: #1d1d1f;
+    --ink-muted: #6e6e73;
+    --ink-faint: #a1a1a6;
+    --line: rgba(0,0,0,0.08);
+    --line-strong: rgba(0,0,0,0.14);
+    --accent: #0071e3;
+    --accent-weak: rgba(0,113,227,0.10);
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --radius-sm: 9px;
+    --shadow: 0 1px 1px rgba(0,0,0,0.03), 0 10px 30px -14px rgba(0,0,0,0.16);
+
+    --st-pendiente: #8e8e93;   --st-pendiente-bg: rgba(142,142,147,0.13);
+    --st-produccion: #ff9500;  --st-produccion-bg: rgba(255,149,0,0.13);
+    --st-listo: #5e5ce6;       --st-listo-bg: rgba(94,92,230,0.11);
+    --st-publicado: #34c759;   --st-publicado-bg: rgba(52,199,89,0.13);
+    --st-error: #ff3b30;       --st-error-bg: rgba(255,59,48,0.11);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #000000;
+      --surface: #1c1c1e;
+      --surface-2: #232326;
+      --surface-3: #2c2c2e;
+      --ink: #f5f5f7;
+      --ink-muted: #98989d;
+      --ink-faint: #636366;
+      --line: rgba(255,255,255,0.09);
+      --line-strong: rgba(255,255,255,0.16);
+      --accent: #0a84ff;
+      --accent-weak: rgba(10,132,255,0.16);
+      --shadow: 0 1px 1px rgba(0,0,0,0.4), 0 10px 30px -14px rgba(0,0,0,0.7);
+
+      --st-pendiente: #98989d;   --st-pendiente-bg: rgba(152,152,157,0.16);
+      --st-produccion: #ff9f0a;  --st-produccion-bg: rgba(255,159,10,0.16);
+      --st-listo: #7d7aff;       --st-listo-bg: rgba(125,122,255,0.16);
+      --st-publicado: #30d158;  --st-publicado-bg: rgba(48,209,88,0.16);
+      --st-error: #ff453a;      --st-error-bg: rgba(255,69,58,0.16);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #000000; --surface: #1c1c1e; --surface-2: #232326; --surface-3: #2c2c2e;
+    --ink: #f5f5f7; --ink-muted: #98989d; --ink-faint: #636366;
+    --line: rgba(255,255,255,0.09); --line-strong: rgba(255,255,255,0.16);
+    --accent: #0a84ff; --accent-weak: rgba(10,132,255,0.16);
+    --shadow: 0 1px 1px rgba(0,0,0,0.4), 0 10px 30px -14px rgba(0,0,0,0.7);
+    --st-pendiente: #98989d;   --st-pendiente-bg: rgba(152,152,157,0.16);
+    --st-produccion: #ff9f0a;  --st-produccion-bg: rgba(255,159,10,0.16);
+    --st-listo: #7d7aff;       --st-listo-bg: rgba(125,122,255,0.16);
+    --st-publicado: #30d158;  --st-publicado-bg: rgba(48,209,88,0.16);
+    --st-error: #ff453a;      --st-error-bg: rgba(255,69,58,0.16);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.47;
+    -webkit-font-smoothing: antialiased;
+  }
+  .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+  a { color: var(--accent); }
+
+  .app {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 36px 20px 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .heading .kicker {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    margin-bottom: 2px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  .save-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    margin-top: 6px;
+  }
+  .save-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); flex: 0 0 auto; }
+  .save-status[data-state="saved"] .dot { background: var(--st-publicado); }
+  .save-status[data-state="pending"] .dot { background: var(--st-produccion); }
+  .save-status[data-state="pending"] .txt { color: var(--st-produccion); font-weight: 600; }
+  .save-status[data-state="saving"] .dot { background: var(--st-produccion); animation: pulse 1s ease-in-out infinite; }
+  .save-status[data-state="error"] .dot,
+  .save-status[data-state="readonly"] .dot { background: var(--st-error); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  @media (prefers-reduced-motion: reduce) { .save-status[data-state="saving"] .dot { animation: none; } }
+
+  .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  .btn {
+    all: unset;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 980px;
+    color: var(--ink);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .btn:hover { background: var(--surface-3); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn.primary { background: var(--accent); color: #fff; box-shadow: none; }
+  .btn.primary:hover { filter: brightness(1.06); }
+  .btn.subtle { background: transparent; box-shadow: none; color: var(--ink-muted); padding: 8px 10px; }
+  .btn.subtle:hover { color: var(--ink); background: var(--surface-3); }
+
+  .btn.save-cta { background: var(--surface); box-shadow: var(--shadow); border: 1px solid var(--line-strong); color: var(--ink); }
+  .btn.save-cta:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.save-cta:active { transform: scale(0.97); }
+  .btn.save-cta.flash { border-color: var(--st-publicado); color: var(--st-publicado); background: var(--st-publicado-bg); }
+  @media (prefers-reduced-motion: no-preference) { .btn.save-cta { transition: transform 0.1s ease, border-color 0.15s ease, color 0.15s ease, background 0.15s ease; } }
+  .btn svg { width: 15px; height: 15px; }
+
+  /* ---------- Controls row: month nav + view toggle ---------- */
+  .controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .month-nav { display: flex; align-items: center; gap: 4px; }
+  .month-nav button {
+    all: unset; cursor: pointer;
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    color: var(--ink-muted);
+  }
+  .month-nav button:hover { background: var(--surface-3); color: var(--ink); }
+  .month-nav button svg { width: 16px; height: 16px; }
+  .month-label {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    min-width: 150px;
+    text-align: center;
+  }
+  .segmented {
+    display: inline-flex;
+    background: var(--surface-3);
+    border-radius: 980px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .segmented button {
+    all: unset; cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 980px;
+    color: var(--ink-muted);
+  }
+  .segmented button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* ---------- Stats ---------- */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+  .stat {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .stat .top { display: flex; align-items: center; gap: 6px; }
+  .stat .swatch { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+  .stat[data-status="pendiente"]  { --dot: var(--st-pendiente); }
+  .stat[data-status="produccion"] { --dot: var(--st-produccion); }
+  .stat[data-status="listo"]      { --dot: var(--st-listo); }
+  .stat[data-status="publicado"]  { --dot: var(--st-publicado); }
+  .stat[data-status="error"]      { --dot: var(--st-error); }
+  .stat .n { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+  .stat .label { font-size: 12px; color: var(--ink-muted); }
+
+  /* ---------- Empty state ---------- */
+  .empty-month {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--ink-muted);
+  }
+  .empty-month p { margin: 6px 0 16px; }
+
+  /* ---------- Platform icons ---------- */
+  .picon { width: 16px; height: 16px; flex: 0 0 auto; display: block; }
+  .picon-sm { width: 13px; height: 13px; flex: 0 0 auto; display: block; }
+
+  /* ---------- Day cards ---------- */
+  .rundown { display: flex; flex-direction: column; gap: 10px; }
+
+  details.day-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  details.day-card > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 16px 20px;
+  }
+  details.day-card > summary::-webkit-details-marker { display: none; }
+  details.day-card > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-lg); }
+
+  .date-block { display: flex; align-items: baseline; gap: 8px; min-width: 118px; }
+  .date-block .dnum { font-size: 28px; font-weight: 300; letter-spacing: -0.02em; }
+  .date-block .wdmo { display: flex; flex-direction: column; line-height: 1.15; }
+  .date-block .wd { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .date-block .mo { font-size: 11.5px; color: var(--ink-muted); }
+  .day-card.today .date-block .dnum,
+  .day-card.today .date-block .wd { color: var(--accent); }
+
+  .platform-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; flex: 1; }
+  .chip-mini { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--ink-muted); font-weight: 500; }
+
+  .status-bar { display: flex; width: 84px; height: 5px; border-radius: 3px; overflow: hidden; background: var(--surface-3); flex: 0 0 auto; }
+  .status-bar span { display: block; height: 100%; }
+  .status-bar .b-pendiente  { background: var(--st-pendiente); }
+  .status-bar .b-produccion { background: var(--st-produccion); }
+  .status-bar .b-listo      { background: var(--st-listo); }
+  .status-bar .b-publicado  { background: var(--st-publicado); }
+  .status-bar .b-error      { background: var(--st-error); }
+
+  .day-count { font-size: 12.5px; color: var(--ink-faint); white-space: nowrap; flex: 0 0 auto; }
+
+  .chevron { flex: 0 0 auto; color: var(--ink-faint); transition: transform 0.18s ease; }
+  .chevron svg { width: 13px; height: 13px; }
+  details[open] > summary .chevron { transform: rotate(90deg); }
+  @media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
+
+  .pieces { border-top: 1px solid var(--line); }
+
+  details.piece { border-bottom: 1px solid var(--line); }
+  details.piece:last-of-type { border-bottom: none; }
+  details.piece[open] { background: var(--surface-2); }
+  details.piece > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+  }
+  details.piece > summary::-webkit-details-marker { display: none; }
+  details.piece > summary:hover { background: var(--surface-2); }
+  details.piece > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .p-platform { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 500; min-width: 128px; flex: 0 0 auto; }
+  .p-format { font-size: 13px; color: var(--ink-muted); min-width: 68px; flex: 0 0 auto; }
+
+  .angle { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .angle.empty { color: var(--ink-faint); font-style: italic; }
+
+  .pill { font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 980px; white-space: nowrap; flex: 0 0 auto; }
+  .pill.pendiente  { color: var(--st-pendiente); background: var(--st-pendiente-bg); }
+  .pill.produccion { color: var(--st-produccion); background: var(--st-produccion-bg); }
+  .pill.listo      { color: var(--st-listo); background: var(--st-listo-bg); }
+  .pill.publicado  { color: var(--st-publicado); background: var(--st-publicado-bg); }
+  .pill.error      { color: var(--st-error); background: var(--st-error-bg); }
+
+  .mini-links { display: flex; gap: 3px; flex: 0 0 auto; }
+  .mlink { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--ink-faint); }
+  .mlink svg { width: 12px; height: 12px; }
+  .mlink.filled { color: var(--accent); }
+
+  .mlink-del {
+    all: unset; cursor: pointer;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    color: var(--ink-faint);
+    flex: 0 0 auto;
+  }
+  .mlink-del svg { width: 13px; height: 13px; }
+  .mlink-del:hover { color: var(--st-error); background: var(--st-error-bg); }
+  .mlink-del.armed { color: var(--st-error); background: var(--st-error-bg); }
+  .mlink-del:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .mlink-dup {
+    all: unset; cursor: pointer;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    color: var(--ink-faint);
+    flex: 0 0 auto;
+  }
+  .mlink-dup svg { width: 13px; height: 13px; }
+  .mlink-dup:hover { color: var(--accent); background: var(--accent-weak); }
+  .mlink-dup:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .linkfield { display: flex; gap: 6px; align-items: center; }
+  .linkfield input { flex: 1; }
+  .open-btn {
+    width: 34px; height: 34px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-sm);
+    background: var(--surface); border: 1px solid var(--line);
+    color: var(--ink-muted);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .open-btn svg { width: 14px; height: 14px; }
+  .open-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .open-btn.disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+  .open-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .piece-detail { padding: 4px 20px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-faint); text-transform: uppercase; }
+  .field input[type="text"], .field input[type="url"], .field input[type="date"], .field textarea, .field select {
+    all: unset;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 13.5px;
+    width: 100%;
+  }
+  .field textarea { min-height: 64px; resize: vertical; line-height: 1.45; white-space: pre-wrap; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+  .field-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .field-row .field { flex: 1; min-width: 200px; }
+  .field-row-3 .field { min-width: 140px; }
+
+  .note-banner {
+    display: flex; gap: 8px; align-items: flex-start;
+    background: var(--st-error-bg); color: var(--st-error);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 12.5px;
+  }
+
+  .piece-detail-footer { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+  .danger-btn {
+    all: unset; cursor: pointer;
+    font-size: 12.5px; font-weight: 500;
+    color: var(--st-error);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+  }
+  .danger-btn:hover { background: var(--st-error-bg); }
+
+  .add-piece-row { padding: 10px 20px 16px; }
+  .add-piece-row button {
+    all: unset; cursor: pointer;
+    font-size: 13px; font-weight: 500;
+    color: var(--accent);
+    padding: 6px 4px;
+  }
+
+  .fab {
+    all: unset; cursor: pointer;
+    position: fixed;
+    right: 28px; bottom: 28px;
+    background: var(--accent); color: #fff;
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 20px -4px rgba(0,113,227,0.55), var(--shadow);
+  }
+  .fab svg { width: 22px; height: 22px; }
+  .fab:hover { filter: brightness(1.05); }
+  .fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- Modal ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.32);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    z-index: 50;
+  }
+  .modal-backdrop[hidden] { display: none; }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px -12px rgba(0,0,0,0.35);
+    width: 100%; max-width: 380px;
+    padding: 22px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .modal h2 { margin: 0; font-size: 17px; font-weight: 600; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+  /* ---------- Lista (table) view ---------- */
+  .table-wrap {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+  table.lista { width: 100%; border-collapse: collapse; min-width: 760px; }
+  table.lista th {
+    text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+    text-transform: uppercase; color: var(--ink-faint);
+    padding: 12px 14px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--surface);
+  }
+  table.lista td {
+    padding: 11px 14px; border-bottom: 1px solid var(--line);
+    font-size: 13.5px; vertical-align: top;
+  }
+  table.lista tr:last-child td { border-bottom: none; }
+  table.lista .cell-platform { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  table.lista .cell-angle { max-width: 220px; }
+  table.lista .cell-copy { max-width: 260px; color: var(--ink-muted); }
+  table.lista .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  table.lista .empty { color: var(--ink-faint); font-style: italic; }
+  table.lista a.link { font-size: 12.5px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+    background: var(--ink); color: var(--bg);
+    padding: 10px 18px; border-radius: 980px;
+    font-size: 13px; font-weight: 500;
+    box-shadow: 0 10px 30px -8px rgba(0,0,0,0.4);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 60;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFC107"/>
+      <stop offset="45%" stop-color="#E1306C"/>
+      <stop offset="100%" stop-color="#833AB4"/>
+    </linearGradient>
+
+    <symbol id="i-instagram" viewBox="0 0 24 24">
+      <rect x="2" y="2" width="20" height="20" rx="6" fill="none" stroke="url(#ig-grad)" stroke-width="2"/>
+      <circle cx="12" cy="12" r="5" fill="none" stroke="url(#ig-grad)" stroke-width="2"/>
+      <circle cx="17.3" cy="6.7" r="1.4" fill="url(#ig-grad)"/>
+    </symbol>
+    <symbol id="i-facebook" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" fill="#1877F2"/>
+      <path d="M13.6 21v-7.2h2.3l.35-2.8h-2.65V9.2c0-.8.2-1.35 1.35-1.35h1.42V5.7c-.25-.03-1.1-.1-2.1-.1-2.1 0-3.5 1.28-3.5 3.62v2.06H8.6v2.8h2.17V21z" fill="#fff"/>
+    </symbol>
+    <symbol id="i-linkedin" viewBox="0 0 24 24">
+      <rect x="2" y="2" width="20" height="20" rx="4" fill="#0A66C2"/>
+      <circle cx="7.6" cy="7.8" r="1.7" fill="#fff"/>
+      <rect x="6.3" y="10.4" width="2.6" height="7.7" fill="#fff"/>
+      <path d="M11.4 10.4h2.5v1.2h.04c.35-.65 1.2-1.4 2.5-1.4 2.68 0 3.17 1.73 3.17 3.98v4.9h-2.6v-4.34c0-1.04-.02-2.36-1.44-2.36-1.45 0-1.67 1.12-1.67 2.28v4.42h-2.6z" fill="#fff"/>
+    </symbol>
+    <symbol id="i-youtube" viewBox="0 0 24 24">
+      <rect x="1.2" y="5" width="21.6" height="14" rx="5" fill="#FF0000"/>
+      <path d="M10 8.7l6.2 3.3-6.2 3.3z" fill="#fff"/>
+    </symbol>
+    <symbol id="i-tiktok" viewBox="0 0 24 24">
+      <path d="M13.6 3v11.6a2.6 2.6 0 1 1-2.6-2.6c.18 0 .35.01.52.04V9.4a5.1 5.1 0 1 0 4.58 5.07V9.7c1.02.72 2.24 1.14 3.6 1.14V8.14c-2.05-.16-3.68-1.74-4.1-3.77z" fill="#010101" transform="translate(-0.6,0)"/>
+      <path d="M13 3v11.6a2.6 2.6 0 1 1-2.6-2.6c.18 0 .35.01.52.04V9.4a5.1 5.1 0 1 0 4.58 5.07" fill="none" stroke="#25F4EE" stroke-width="0.7" opacity="0.85" transform="translate(-1.3,0.5)"/>
+      <path d="M13 3v11.6a2.6 2.6 0 1 1-2.6-2.6c.18 0 .35.01.52.04V9.4a5.1 5.1 0 1 0 4.58 5.07" fill="none" stroke="#FE2C55" stroke-width="0.7" opacity="0.85" transform="translate(0.1,-0.5)"/>
+    </symbol>
+    <symbol id="i-email" viewBox="0 0 24 24">
+      <rect x="2" y="4.5" width="20" height="15" rx="3" fill="#6E6E73"/>
+      <path d="M3 6.5l9 6.2 9-6.2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-newsletter" viewBox="0 0 24 24">
+      <rect x="3" y="3" width="15" height="18" rx="2" fill="#5E5CE6"/>
+      <rect x="6.5" y="7" width="8" height="1.6" rx="0.8" fill="#fff"/>
+      <rect x="6.5" y="10.4" width="8" height="1.6" rx="0.8" fill="#fff"/>
+      <rect x="6.5" y="13.8" width="5" height="1.6" rx="0.8" fill="#fff"/>
+    </symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-material" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 5v14M16 5v14M3 9h5M3 15h5M16 9h5M16 15h5" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-portada" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="currentColor"/><path d="M21 16l-5.5-5.5L5 20" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-notas" viewBox="0 0 24 24"><path d="M4 4h13l3 3v13H4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M17 4v3h3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-publicado" viewBox="0 0 24 24"><path d="M10 14L21 3M21 3h-6M21 3v6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-duplicate" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 4v6h7V4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 20v-6h8v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M9 15L20 4M20 4h-6M20 4v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="heading">
+      <span class="kicker">Mastery Haus</span>
+      <h1>Tablero de Salida</h1>
+      <div class="save-status" id="save-status" data-state="local"><span class="dot"></span><span class="txt">Cargando…</span></div>
+    </div>
+    <div class="header-actions">
+      <button class="btn save-cta" id="save-btn"><svg><use href="#i-save"/></svg><span class="btn-label">Guardar</span></button>
+      <button class="btn subtle" id="export-btn"><svg><use href="#i-download"/></svg>Exportar CSV</button>
+      <button class="btn primary" id="add-btn-header"><svg><use href="#i-plus"/></svg>Nueva pieza</button>
+    </div>
+  </header>
+
+  <div class="controls-row">
+    <div class="month-nav">
+      <button id="month-prev" aria-label="Mes anterior"><svg><use href="#i-chevron-left"/></svg></button>
+      <span class="month-label tnum" id="month-label">—</span>
+      <button id="month-next" aria-label="Mes siguiente"><svg><use href="#i-chevron"/></svg></button>
+    </div>
+    <div class="segmented" id="view-toggle">
+      <button class="active" data-view="agenda">Agenda</button>
+      <button data-view="lista">Lista</button>
+    </div>
+  </div>
+
+  <section class="stats-strip" id="stats"></section>
+
+  <main id="content"></main>
+
+</div>
+
+<button class="fab" id="fab-add" aria-label="Nueva pieza"><svg><use href="#i-plus"/></svg></button>
+
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+  <div class="modal">
+    <h2>Nueva pieza</h2>
+    <div class="field">
+      <label>Fecha</label>
+      <input type="date" id="modal-date">
+    </div>
+    <div class="field-row field-row-3">
+      <div class="field">
+        <label>Plataforma</label>
+        <select id="modal-platform">
+          <option value="instagram">Instagram</option>
+          <option value="instagram_mh">Instagram MH</option>
+          <option value="facebook">Facebook</option>
+          <option value="linkedin">LinkedIn</option>
+          <option value="youtube">YouTube</option>
+          <option value="tiktok">TikTok</option>
+          <option value="email">Email Marketing</option>
+          <option value="newsletter">Newsletter</option>
+        </select>
+      </div>
+      <div class="field" id="modal-format-field">
+        <label id="modal-format-label">Formato</label>
+        <div id="modal-format-slot"><select id="modal-format"></select></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Ángulo / título (opcional)</label>
+      <input type="text" id="modal-angle" placeholder="Ej: Testimonio Full Day">
+    </div>
+    <div class="modal-actions">
+      <button class="btn subtle" id="modal-cancel">Cancelar</button>
+      <button class="btn primary" id="modal-submit">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script id="seed-data" type="application/json">
+{
+  "pieces": [
+    {
+      "id": "pmtd4a95qrh72x",
+      "date": "2026-08-28",
+      "platform": "instagram",
+      "format": "CARRUSEL",
+      "angle": "Ladron #5: Los cinco minutos que son cuarenta ",
+      "copy": "El copy es este: \n\nFaltan 3 días para que empecemos a crear juntos los días que te llevan a la vida que realmente querés. Para que tus proyectos y lo que realmente te mueve tenga lugar en tu hoy. \n\nComentá ACCIÓN para asegurar tu lugar antes de que cierren las inscripciones 🔥",
+      "material": "https://drive.google.com/drive/folders/1A8natwadYRu_NLZqXUbSYZMT8XnAiyUf",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Horario: 12:30 ",
+      "publicado": "https://www.instagram.com/p/DclsEy5ju2t/?img_index=1"
+    },
+    {
+      "id": "pmtd4rhobr0chc",
+      "date": "2026-08-28",
+      "platform": "linkedin",
+      "format": "CARRUSEL",
+      "angle": "Ladron #5: Los cinco minutos que son cuarenta ",
+      "copy": "El copy es este: \n\nFaltan 3 días para que empecemos a crear juntos los días que te llevan a la vida que realmente querés. Para que tus proyectos y lo que realmente te mueve tenga lugar en tu hoy. \n\nHace click acá para asegurar tu lugar: https://mh.masteryhaus.com/linkedin-org 🔥",
+      "material": "https://drive.google.com/drive/folders/1A8natwadYRu_NLZqXUbSYZMT8XnAiyUf",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Horario: 12:30 ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd5543vityun",
+      "date": "2026-08-28",
+      "platform": "instagram",
+      "format": "REEL",
+      "angle": "Ad9_tanda3: \"conocer mejor el camino\"",
+      "copy": "ULTIMOS DÍAS 🔥\n\nComenta ACCIÓN y asegurá tu lugar ahora ",
+      "material": "https://drive.google.com/file/d/1CyIzBqqD64QnDO33-kDSSqJtWQ6h-x70/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1VTg3mlhe0gkrq1wZFMNEk_t3Q152pS8i/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Horario: 03:00 pm ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd575770onrx",
+      "date": "2026-08-28",
+      "platform": "linkedin",
+      "format": "REEL",
+      "angle": "Ad9_tanda3: \"conocer mejor el camino\"",
+      "copy": "ULTIMOS DÍAS 🔥\n\nHace click y asegurá tu lugar ahora: https://mh.masteryhaus.com/linkedin-org",
+      "material": "https://drive.google.com/file/d/11TtZ3SSvMn82_2TQtG7ngUTy8WL7Co9i/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1VTg3mlhe0gkrq1wZFMNEk_t3Q152pS8i/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Horario: 03:00 pm ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd584fqvap9t",
+      "date": "2026-08-28",
+      "platform": "youtube",
+      "format": "SHORTS",
+      "angle": "Ad9_tanda3: \"conocer mejor el camino\"",
+      "copy": "Titulo: ¿Tus Dias Son El Camino o El Obstáculo? \n\nCopy: \n\nULTIMOS DÍAS 🔥\n\nHace click y asegurá tu lugar ahora: https://mh.masteryhaus.com/youtube-sc",
+      "material": "https://drive.google.com/file/d/11TtZ3SSvMn82_2TQtG7ngUTy8WL7Co9i/view?usp=sharing",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Horario: 03:00 pm ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd59fg6sgb7a",
+      "date": "2026-08-28",
+      "platform": "facebook",
+      "format": "REEL",
+      "angle": "Ad9_tanda3: \"conocer mejor el camino\"",
+      "copy": "ULTIMOS DÍAS 🔥\n\nHace click y asegurá tu lugar ahora: https://mh.masteryhaus.com/facebook-org",
+      "material": "https://drive.google.com/file/d/11TtZ3SSvMn82_2TQtG7ngUTy8WL7Co9i/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1VTg3mlhe0gkrq1wZFMNEk_t3Q152pS8i/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Horario: 03:00 pm ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd6g9zgzusmh",
+      "date": "2026-08-28",
+      "platform": "instagram",
+      "format": "CARRUSEL",
+      "angle": "Ladron #6: Las sobras ",
+      "copy": "La vida que esperas vivir no esta lejos. \n\nLa empezamos a construir juntos a partir de este lunes a las 20 hs Argentina. \n\nComenta ACCIÓN y asegurá tu acceso 🔥",
+      "material": "https://drive.google.com/drive/folders/14Nz9UEyek0Wv2m4zg0U62RVBihGvhK77?usp=sharing",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Hora: 4:30 pm ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd6ieuxb5cgi",
+      "date": "2026-08-28",
+      "platform": "linkedin",
+      "format": "CARRUSEL",
+      "angle": "Ladron #6: Las sobras ",
+      "copy": "La vida que esperas vivir no esta lejos. \n\nLa empezamos a construir juntos a partir de este lunes a las 20 hs Argentina. \n\nHace click y asegurá tu acceso: https://mh.masteryhaus.com/linkedin-org",
+      "material": "https://drive.google.com/drive/folders/14Nz9UEyek0Wv2m4zg0U62RVBihGvhK77?usp=sharing",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Hora: 4:30 pm ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd6k7gm4eu11",
+      "date": "2026-08-28",
+      "platform": "instagram",
+      "format": "REEL",
+      "angle": "Ad3_tanda2: cuántas horas estás trabajando?",
+      "copy": "Es viernes, está cerrando la semana y quiero que te preguntes ¿cuántos días fueron realmente tuyos?\n\nSi la respuesta no está alineada a la vida que querés, entonces este es el momento para empezar a hacer algo al respecto. \n\nComenta ACCIÓN y sumate el workshop donde vamos a empezar a construir días que te lleven a la vida que querés. ",
+      "material": "https://drive.google.com/file/d/1X8LeJEnRdn_Ej3FmZQAhT_js7AJtk9ay/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1VTg3mlhe0gkrq1wZFMNEk_t3Q152pS8i/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Hora: 6 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd6tok2tcp1w",
+      "date": "2026-08-28",
+      "platform": "linkedin",
+      "format": "REEL",
+      "angle": "Ad3_tanda2: cuántas horas estás trabajando?",
+      "copy": "Es viernes, está cerrando la semana y quiero que te preguntes ¿cuántos días fueron realmente tuyos?\n\nSi la respuesta no está alineada a la vida que querés, entonces este es el momento para empezar a hacer algo al respecto. \n\nHace click y sumate el workshop donde vamos a empezar a construir días que te lleven a la vida que querés. \n\n👉 https://mh.masteryhaus.com/linkedin-org",
+      "material": "https://drive.google.com/file/d/1MkCJjJ_mafB3Ycim4dtwUN2g2RDOldbp/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1VTg3mlhe0gkrq1wZFMNEk_t3Q152pS8i/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Hora: 6 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd6uuypileb0",
+      "date": "2026-08-28",
+      "platform": "youtube",
+      "format": "SHORTS",
+      "angle": "Ad3_tanda2: cuántas horas estás trabajando?",
+      "copy": "Titulo: ¿Cuántos días esta semana fueron realmente tuyos?\n\nEs viernes, está cerrando la semana y quiero que te preguntes ¿cuántos días fueron realmente tuyos?\n\nSi la respuesta no está alineada a la vida que querés, entonces este es el momento para empezar a hacer algo al respecto. \n\nHace click y sumate el workshop donde vamos a empezar a construir días que te lleven a la vida que querés. \n\n👉 https://mh.masteryhaus.com/youtube-sc",
+      "material": "https://drive.google.com/file/d/1MkCJjJ_mafB3Ycim4dtwUN2g2RDOldbp/view?usp=sharing",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Hora: 6 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd8k6bin0udr",
+      "date": "2026-08-28",
+      "platform": "facebook",
+      "format": "REEL",
+      "angle": "Ad3_tanda2: cuántas horas estás trabajando?",
+      "copy": "¿Cuántos días esta semana fueron realmente tuyos?\n\nEs viernes, está cerrando la semana y quiero que te preguntes ¿cuántos días fueron realmente tuyos?\n\nSi la respuesta no está alineada a la vida que querés, entonces este es el momento para empezar a hacer algo al respecto. \n\nHace click y sumate el workshop donde vamos a empezar a construir días que te lleven a la vida que querés. \n\n👉 https://mh.masteryhaus.com/facebook-org",
+      "material": "https://drive.google.com/file/d/1MkCJjJ_mafB3Ycim4dtwUN2g2RDOldbp/view?usp=sharing",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Hora: 6 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd7cygwali78",
+      "date": "2026-08-29",
+      "platform": "instagram",
+      "format": "CARRUSEL",
+      "angle": "Ladron #7: El si que pagas después",
+      "copy": "Faltan 2 días y empezamos 🔥\n\nComenta ACCIÓN y asegurá tu lugar. ",
+      "material": "https://drive.google.com/drive/folders/12e5eQ0b6d8QIzmS9sJ0uDYfBdlX27k04?usp=drive_link",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Hora: 11 am ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd7fsk5llszl",
+      "date": "2026-08-29",
+      "platform": "linkedin",
+      "format": "CARRUSEL",
+      "angle": "Ladron #7: El si que pagas después",
+      "copy": "Faltan 2 días y empezamos 🔥\n\n👉 Tu lugar acá: https://mh.masteryhaus.com/linkedin-org",
+      "material": "https://drive.google.com/drive/folders/12e5eQ0b6d8QIzmS9sJ0uDYfBdlX27k04?usp=drive_link",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Hora: 11 am ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd7kvqhaastc",
+      "date": "2026-08-29",
+      "platform": "instagram",
+      "format": "REEL",
+      "angle": "Ad8_tanda3",
+      "copy": "Comenta ACCIÓN y sumate a GANA TU DÍA. \n\nEl workshop donde desde este lunes 31 al 3 de septiembre nos vamos a ver en vivo para romper el piloto automático. \n\n¿Te veo ahí? ",
+      "material": "https://drive.google.com/file/d/1BvzRB_WYj7O0ArmQOEjM2DRopMOhSMuX/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1tnxtjtDIM0P1N784WZaWfqwibrhWuqpE/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Hora: 1 pm ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd7qb45etqfh",
+      "date": "2026-08-29",
+      "platform": "linkedin",
+      "format": "REEL",
+      "angle": "Ad8_tanda3",
+      "copy": "Ultimos días para sumarte a GANA TU DÍA: \n\nEl workshop donde desde este lunes 31 al 3 de septiembre nos vamos a ver en vivo para romper el piloto automático. \n\n👉 Tu lugar acá: https://mh.masteryhaus.com/linkedin-org\n\n¿Te veo ahí? ",
+      "material": "https://drive.google.com/file/d/1NWXuvP_5ukebShJKB_ofFmUFuSkrLb0Z/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1tnxtjtDIM0P1N784WZaWfqwibrhWuqpE/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Hora: 1 pm ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdb8zlf64wr9",
+      "date": "2026-08-29",
+      "platform": "facebook",
+      "format": "REEL",
+      "angle": "Ad8_tanda3",
+      "copy": "Ultimos días para sumarte a GANA TU DÍA: \n\nEl workshop donde desde este lunes 31 al 3 de septiembre nos vamos a ver en vivo para romper el piloto automático. \n\n👉 Tu lugar acá: https://mh.masteryhaus.com/facebook-org\n\n¿Te veo ahí? ",
+      "material": "https://drive.google.com/file/d/1NWXuvP_5ukebShJKB_ofFmUFuSkrLb0Z/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1tnxtjtDIM0P1N784WZaWfqwibrhWuqpE/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Hora: 1 pm ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd7rsxukvv00",
+      "date": "2026-08-29",
+      "platform": "youtube",
+      "format": "SHORTS",
+      "angle": "Ad8_tanda3",
+      "copy": "Titulo: Últimos días para sumarte a GANA TU DÍA 🔥\n\nCopy: \n\nEl workshop donde desde este lunes 31 al 3 de septiembre nos vamos a ver en vivo para romper el piloto automático. \n\n👉 Tu lugar acá: https://mh.masteryhaus.com/youtube-sc\n\n¿Te veo ahí? ",
+      "material": "https://drive.google.com/file/d/1NWXuvP_5ukebShJKB_ofFmUFuSkrLb0Z/view?usp=sharing",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Hora: 1 pm ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd7yw64zg84q",
+      "date": "2026-08-29",
+      "platform": "instagram",
+      "format": "REEL",
+      "angle": "Ladron #8: La cabeza que no llega a la mesa",
+      "copy": "Es momento de priorizarte, porque si no lo haces vos nadie más lo va a hacer en tu lugar. \n\nComenta ACCIÓN y sumate al workshop donde vamos a construir dias reales que te lleven hacia donde querés llegar 🔥",
+      "material": "https://drive.google.com/drive/folders/1Q8ynNw7Te98asM_VGlUDNdB5yUeZD5v8?usp=drive_link",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Hora: 3 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd817ufh0t19",
+      "date": "2026-08-29",
+      "platform": "linkedin",
+      "format": "REEL",
+      "angle": "Ladron #8: La cabeza que no llega a la mesa",
+      "copy": "Es momento de priorizarte, porque si no lo haces vos nadie más lo va a hacer en tu lugar. \n\nPor eso te invito a sumarte al workshop donde vamos a construir dias reales que te lleven hacia donde querés llegar 🔥\n\n👉 Tu lugar acá: https://mh.masteryhaus.com/linkedin-org\n",
+      "material": "https://drive.google.com/drive/folders/1Q8ynNw7Te98asM_VGlUDNdB5yUeZD5v8?usp=drive_link",
+      "portada": "",
+      "estado": "publicado",
+      "notas": "Hora: 3 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd82ib7vyk07",
+      "date": "2026-08-29",
+      "platform": "youtube",
+      "format": "SHORTS",
+      "angle": "Ad5_tanda4",
+      "copy": "Titulo: ¿Tu CANSACIO no se va con nada? Escuchá ESTO\n\nCopy:\n\nEs momento de priorizarte, porque si no lo haces vos nadie más lo va a hacer en tu lugar. \n\nPor eso te invito a sumarte al workshop donde vamos a construir dias reales que te lleven hacia donde querés llegar 🔥\n\n👉 Tu lugar acá: https://mh.masteryhaus.com/youtube-sc\n",
+      "material": "https://drive.google.com/file/d/1_JWrOmYxcwjtb3zdYlvvxBQlCDP4A1HN/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1AK_BTXMT24X9n19YG6zcHSxQwB52pba8/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Hora: 6 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd87s7f3z3vu",
+      "date": "2026-08-29",
+      "platform": "linkedin",
+      "format": "REEL",
+      "angle": "Ad5_tanda4",
+      "copy": "Es momento de priorizarte, porque si no lo haces vos nadie más lo va a hacer en tu lugar. \n\nPor eso te invito a sumarte al workshop donde vamos a construir dias reales que te lleven hacia donde querés llegar 🔥\n\n👉 Tu lugar acá: https://mh.masteryhaus.com/linkedin-org\n",
+      "material": "https://drive.google.com/file/d/1_JWrOmYxcwjtb3zdYlvvxBQlCDP4A1HN/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1AK_BTXMT24X9n19YG6zcHSxQwB52pba8/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Hora: 6 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdbah5p8ps0u",
+      "date": "2026-08-29",
+      "platform": "facebook",
+      "format": "REEL",
+      "angle": "Ad5_tanda4",
+      "copy": "Es momento de priorizarte, porque si no lo haces vos nadie más lo va a hacer en tu lugar. \n\nPor eso te invito a sumarte al workshop donde vamos a construir dias reales que te lleven hacia donde querés llegar 🔥\n\n👉 Tu lugar acá: https://mh.masteryhaus.com/facebook-org",
+      "material": "https://drive.google.com/file/d/1_JWrOmYxcwjtb3zdYlvvxBQlCDP4A1HN/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1AK_BTXMT24X9n19YG6zcHSxQwB52pba8/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Hora: 6 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtd89yjctt230",
+      "date": "2026-08-29",
+      "platform": "instagram",
+      "format": "REEL",
+      "angle": "Ad5_tanda4",
+      "copy": "Es momento de priorizarte, porque si no lo haces vos nadie más lo va a hacer en tu lugar. \n\nPor eso te invito a sumarte al workshop donde vamos a construir dias reales que te lleven hacia donde querés llegar 🔥\n\nComenta ACCIÓN y asegurá tu lulgar\n",
+      "material": "https://drive.google.com/file/d/1_JWrOmYxcwjtb3zdYlvvxBQlCDP4A1HN/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1AK_BTXMT24X9n19YG6zcHSxQwB52pba8/view?usp=drive_link",
+      "estado": "publicado",
+      "notas": "Hora: 6 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdajlyj7v78a",
+      "date": "2026-08-30",
+      "platform": "instagram",
+      "format": "CARRUSEL",
+      "angle": "Ladron #9: El \"cuando termine esto\" ",
+      "copy": "Mañana nos vemos en vivo, a las 20 hs Argentina para romper el piloto automatico. \n\nVan a ser 4 días intensivos para recuperar el control de tu tiempo, de tus días y de tu vida. \n\nComentá ACCIÓN y asegurá tu lugar 🔥",
+      "material": "https://drive.google.com/drive/folders/1vW5TANu4XJz6HHm6nfY-G7r-TDRdyR0Q?usp=sharing",
+      "portada": "",
+      "estado": "listo",
+      "notas": "Hora: 10 am ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdb82adqfetz",
+      "date": "2026-08-30",
+      "platform": "facebook",
+      "format": "CARRUSEL",
+      "angle": "Ladron #9: El \"cuando termine esto\" ",
+      "copy": "Mañana nos vemos en vivo, a las 20 hs Argentina para romper el piloto automatico. \n\nVan a ser 4 días intensivos para recuperar el control de tu tiempo, de tus días y de tu vida. \n\nAsegurá tu lugar acá: https://mh.masteryhaus.com/facebook-org",
+      "material": "https://drive.google.com/drive/folders/1vW5TANu4XJz6HHm6nfY-G7r-TDRdyR0Q?usp=sharing",
+      "portada": "",
+      "estado": "listo",
+      "notas": "Hora: 10 am ",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdapmzekz8a5",
+      "date": "2026-08-30",
+      "platform": "instagram",
+      "format": "REEL",
+      "angle": "Ad6_tanda4",
+      "copy": "Comenta ACCIÓN y sumate a romper, en vivo y conmigo, el piloto automático que te mantiene atrapado en una vida que no es tuya. \n\nMañana empezamos. Estoy felíz de poder acompañarte en este proceso ❤️‍🔥",
+      "material": "https://drive.google.com/file/d/1VE_69XumyT3cdTD2j1HWi-bM3o52_NoX/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1Zji16p_kh-xzEiZD6rFuEAxi-rZcEX1_/view?usp=drive_link",
+      "estado": "listo",
+      "notas": "Hora 12:30 mediodia",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdbem9kjhc5b",
+      "date": "2026-08-30",
+      "platform": "facebook",
+      "format": "REEL",
+      "angle": "Ad6_tanda4",
+      "copy": "Sumate a romper en vivo y conmigo, el piloto automático que te mantiene atrapado en una vida que no es tuya. \n\nMañana empezamos. Estoy felíz de poder acompañarte en este proceso ❤️‍🔥\n\nAsegurá tu lugar acá: https://mh.masteryhaus.com/facebook-org",
+      "material": "https://drive.google.com/file/d/1VE_69XumyT3cdTD2j1HWi-bM3o52_NoX/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1Zji16p_kh-xzEiZD6rFuEAxi-rZcEX1_/view?usp=drive_link",
+      "estado": "listo",
+      "notas": "Hora 12:30 mediodia",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdbfhwt5uzzh",
+      "date": "2026-08-30",
+      "platform": "linkedin",
+      "format": "REEL",
+      "angle": "Ad6_tanda4",
+      "copy": "Sumate a romper en vivo y conmigo, el piloto automático que te mantiene atrapado en una vida que no es tuya. \n\nMañana empezamos. Estoy felíz de poder acompañarte en este proceso ❤️‍🔥\n\n👉 Tu lugar acá: https://mh.masteryhaus.com/linkedin-org",
+      "material": "https://drive.google.com/file/d/1VE_69XumyT3cdTD2j1HWi-bM3o52_NoX/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1Zji16p_kh-xzEiZD6rFuEAxi-rZcEX1_/view?usp=drive_link",
+      "estado": "listo",
+      "notas": "Hora 12:30 mediodia",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdbg9z24fu64",
+      "date": "2026-08-30",
+      "platform": "youtube",
+      "format": "SHORTS",
+      "angle": "Ad6_tanda4",
+      "copy": "Titulo: La Frase Que Puede Cambiar La Forma De Vivir Tus Días \n\nCopy: \n\nSumate a romper en vivo y conmigo, el piloto automático que te mantiene atrapado en una vida que no es tuya. \n\nMañana empezamos. Estoy felíz de poder acompañarte en este proceso ❤️‍🔥\n\n👉 Tu lugar acá: https://mh.masteryhaus.com/youtube-sc",
+      "material": "https://drive.google.com/file/d/1VE_69XumyT3cdTD2j1HWi-bM3o52_NoX/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1Zji16p_kh-xzEiZD6rFuEAxi-rZcEX1_/view?usp=drive_link",
+      "estado": "listo",
+      "notas": "Hora 12:30 mediodia",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdbmtwukdblw",
+      "date": "2026-08-30",
+      "platform": "instagram",
+      "format": "CARRUSEL",
+      "angle": "Ladrón #10: El problema que no se resuelve a las 10 pm ",
+      "copy": "Comenta ACCIÓN y sumate al workshop en vivo 🔥\n\nMañana vamos a ser miles de personas avanzando juntos para darle lugar a una vida que valga la pena ser vivida. \n\n¿Te veo ahí? ",
+      "material": "https://drive.google.com/drive/folders/1WBXyEQsT-qGwbbUFOt1Ye9oASfwadpQN?usp=drive_link",
+      "portada": "",
+      "estado": "listo",
+      "notas": "Hora: 3 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdcxd4wan9lp",
+      "date": "2026-08-30",
+      "platform": "facebook",
+      "format": "CARRUSEL",
+      "angle": "Ladrón #10: El problema que no se resuelve a las 10 pm ",
+      "copy": "👉 Asegurá tu lugar acá: https://mh.masteryhaus.com/facebook-org\n\nMañana vamos a ser miles de personas avanzando juntos para darle lugar a una vida que valga la pena ser vivida. \n\n¿Te veo ahí? ",
+      "material": "https://drive.google.com/drive/folders/1WBXyEQsT-qGwbbUFOt1Ye9oASfwadpQN?usp=drive_link",
+      "portada": "",
+      "estado": "listo",
+      "notas": "Hora: 3 pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdc8ys2uy50o",
+      "date": "2026-08-30",
+      "platform": "instagram",
+      "format": "REEL",
+      "angle": "AD3_tanda4",
+      "copy": "No queda nada. Mañana es el día donde vamos a dar juntos el primer paso hacia la vida que querés. \n\nPorque no hay otra esperándote en ningún lugar. Y el tiempo que tenemos hoy es el recurso más importante que tenemos. \n\nComentá ACCIÓN para sumarte. \n\nTe voy a estar esperando del otro lado 🔥",
+      "material": "https://drive.google.com/file/d/10IDPxXhnNVyHrBrQ1type_H3kSZhNuaL/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1CUk0jqc3p97OiupuCLyCi6YfjPDTxsLE/view?usp=sharing",
+      "estado": "listo",
+      "notas": "Hora: 5pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdcdw1ckou6p",
+      "date": "2026-08-30",
+      "platform": "linkedin",
+      "format": "REEL",
+      "angle": "AD3_tanda4",
+      "copy": "No queda nada. Mañana es el día donde vamos a dar juntos el primer paso hacia la vida que querés. \n\nPorque no hay otra esperándote en ningún lugar. Y el tiempo que tenemos hoy es el recurso más importante que tenemos. \n\n👉 Tu lugar acá: https://mh.masteryhaus.com/linkedin-org\n\nTe voy a estar esperando del otro lado 🔥",
+      "material": "https://drive.google.com/file/d/10IDPxXhnNVyHrBrQ1type_H3kSZhNuaL/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1CUk0jqc3p97OiupuCLyCi6YfjPDTxsLE/view?usp=sharing",
+      "estado": "listo",
+      "notas": "Hora: 5pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdce6llko7ge",
+      "date": "2026-08-30",
+      "platform": "facebook",
+      "format": "REEL",
+      "angle": "AD3_tanda4",
+      "copy": "No queda nada. Mañana es el día donde vamos a dar juntos el primer paso hacia la vida que querés. \n\nPorque no hay otra esperándote en ningún lugar. Y el tiempo que tenemos hoy es el recurso más importante que tenemos. \n\n👉 Asegurá tu lugar acá: https://mh.masteryhaus.com/facebook-org\n\nTe voy a estar esperando del otro lado 🔥",
+      "material": "https://drive.google.com/file/d/10IDPxXhnNVyHrBrQ1type_H3kSZhNuaL/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1CUk0jqc3p97OiupuCLyCi6YfjPDTxsLE/view?usp=sharing",
+      "estado": "listo",
+      "notas": "Hora: 5pm",
+      "publicado": ""
+    },
+    {
+      "id": "pmtdcedxapu897",
+      "date": "2026-08-30",
+      "platform": "youtube",
+      "format": "SHORTS",
+      "angle": "AD3_tanda4",
+      "copy": "Titulo: La Pregunta Que ROMPE Tu PILOTO AUTOMÁTICO\n\nNo queda nada. Mañana es el día donde vamos a dar juntos el primer paso hacia la vida que querés. \n\nPorque no hay otra esperándote en ningún lugar. Y el tiempo que tenemos hoy es el recurso más importante que tenemos. \n\n👉 Asegurá tu lugar acá: https://mh.masteryhaus.com/youtube-sc\n\nTe voy a estar esperando del otro lado 🔥",
+      "material": "https://drive.google.com/file/d/10IDPxXhnNVyHrBrQ1type_H3kSZhNuaL/view?usp=sharing",
+      "portada": "https://drive.google.com/file/d/1CUk0jqc3p97OiupuCLyCi6YfjPDTxsLE/view?usp=sharing",
+      "estado": "listo",
+      "notas": "Hora: 5pm",
+      "publicado": ""
+    }
+  ]
+}
+</script>
+
+<script>
+function TableroApp(SEED) {
+  'use strict';
+
+  var PLATFORM_META = {
+    instagram:    { label: 'Instagram',       icon: 'i-instagram' },
+    instagram_mh: { label: 'Instagram MH',    icon: 'i-instagram' },
+    facebook:     { label: 'Facebook',        icon: 'i-facebook' },
+    linkedin:     { label: 'LinkedIn',        icon: 'i-linkedin' },
+    youtube:      { label: 'YouTube',         icon: 'i-youtube' },
+    tiktok:       { label: 'TikTok',          icon: 'i-tiktok' },
+    email:        { label: 'Email Marketing', icon: 'i-email' },
+    newsletter:   { label: 'Newsletter',      icon: 'i-newsletter' }
+  };
+  var FORMAT_LABEL = { REEL: 'Reel', CARRUSEL: 'Carrusel', HISTORIAS: 'Historias', POST: 'Post', SHORTS: 'Shorts', LONG_VIDEO: 'Video largo', CANAL_DIFUSION: 'Canal de difusión' };
+  var PLATFORM_FORMATS = {
+    instagram:    ['REEL', 'CARRUSEL', 'HISTORIAS', 'POST', 'CANAL_DIFUSION'],
+    instagram_mh: ['REEL', 'CARRUSEL', 'HISTORIAS', 'POST', 'CANAL_DIFUSION'],
+    facebook:     ['REEL', 'CARRUSEL', 'HISTORIAS', 'POST'],
+    linkedin:     ['REEL', 'CARRUSEL', 'HISTORIAS', 'POST'],
+    youtube:      ['LONG_VIDEO', 'SHORTS', 'POST'],
+    tiktok:       ['REEL']
+  };
+  function formatsFor(platform) { return PLATFORM_FORMATS[platform] || Object.keys(FORMAT_LABEL); }
+  var FREEFORM_META = {
+    email:      { label: 'Campaña', placeholder: 'Ej: Lanzamiento Full Day agosto' },
+    newsletter: { label: 'Edición',  placeholder: 'Ej: #42' }
+  };
+  function usesFreeformFormat(platform) { return Object.prototype.hasOwnProperty.call(FREEFORM_META, platform); }
+  var STATUS_META = {
+    pendiente:  { label: 'Pendiente',        cls: 'pendiente' },
+    produccion: { label: 'En producción',    cls: 'produccion' },
+    listo:      { label: 'Listo para salir', cls: 'listo' },
+    publicado:  { label: 'Publicado',        cls: 'publicado' },
+    error:      { label: 'Demorado',         cls: 'error' }
+  };
+  var WD = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+  var MO_SHORT = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+  var MO_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  // Everything lives in memory from the start (SEED holds the full, current dataset — not
+  // just a bootstrap fallback). There is no lazy per-month loading and no separate manifest
+  // file: those existed for a sharded-file save strategy that turned out to be unsupported in
+  // this runtime (publish() rejected with "capability_disabled" for its files form). Saving now
+  // republishes this whole page — see buildFullHtml/doSave below.
+  var monthCache = {};  // 'YYYY-MM' -> array of pieces (mutable), fully populated at boot
+  var docVersion = 0;      // bumped on every local mutation
+  var docSavedVersion = 0; // version last successfully published
+  var currentMonth = null;
+  var viewMode = 'agenda';
+  var saveTimer = null;
+  var saveInFlight = false;
+  var writable = true;
+
+  function ensureMonthArray(mk) { if (!monthCache[mk]) monthCache[mk] = []; return monthCache[mk]; }
+  function markDirty() {
+    docVersion++;
+    if (!saveInFlight) setSaveStatus('pending', 'Cambios sin guardar — tocá Guardar');
+  }
+  function hasUnsavedChanges() { return docVersion !== docSavedVersion; }
+  function findPieceById(id) {
+    var mks = Object.keys(monthCache);
+    for (var i = 0; i < mks.length; i++) {
+      var arr = monthCache[mks[i]];
+      for (var j = 0; j < arr.length; j++) if (arr[j].id === id) return { piece: arr[j], mk: mks[i], idx: j };
+    }
+    return null;
+  }
+  function flattenPieces() {
+    var all = [];
+    Object.keys(monthCache).forEach(function (mk) { all = all.concat(monthCache[mk]); });
+    return all;
+  }
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function todayLocal() { return new Date(); }
+  function parseDate(dateStr) {
+    var parts = dateStr.split('-').map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  function monthKey(dateStr) { return dateStr.slice(0, 7); }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function toDateInputValue(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function uid() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  // ---------- load / boot ----------
+  // Saving republishes the whole page, which reloads this view (see doSave). Right before that
+  // happens we stash which day/piece was open — and the month/view showing — in sessionStorage,
+  // so the reload lands back where the person was instead of collapsing everything they had open.
+  var pendingRestoreOpen = null;
+  function stashUiState() {
+    try {
+      var open = collectOpenState();
+      sessionStorage.setItem('tablero-ui-state', JSON.stringify({
+        month: currentMonth, view: viewMode,
+        openDays: Object.keys(open.days), openPieces: Object.keys(open.pieces),
+        scrollY: window.scrollY
+      }));
+    } catch (e) { /* sessionStorage unavailable — the reload just lands on today's month, closed */ }
+  }
+  function restoreUiState() {
+    var raw;
+    try { raw = sessionStorage.getItem('tablero-ui-state'); sessionStorage.removeItem('tablero-ui-state'); } catch (e) { return; }
+    if (!raw) return;
+    var state;
+    try { state = JSON.parse(raw); } catch (e) { return; }
+    if (state.month) currentMonth = state.month;
+    if (state.view) viewMode = state.view;
+    pendingRestoreOpen = { days: {}, pieces: {} };
+    (state.openDays || []).forEach(function (d) { pendingRestoreOpen.days[d] = true; });
+    (state.openPieces || []).forEach(function (p) { pendingRestoreOpen.pieces[p] = true; });
+    if (typeof state.scrollY === 'number') {
+      setTimeout(function () { window.scrollTo(0, state.scrollY); }, 0);
+    }
+  }
+
+  function boot() {
+    var t = todayLocal();
+    currentMonth = { y: t.getFullYear(), m: t.getMonth() + 1 };
+    restoreUiState();
+    wireStaticEvents();
+    var pieces = (SEED && Array.isArray(SEED.pieces)) ? SEED.pieces : [];
+    pieces.forEach(function (p) { ensureMonthArray(monthKey(p.date)).push(p); });
+    checkWritability();
+    $('view-toggle').querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b.dataset.view === viewMode); });
+    renderAll();
+  }
+
+  function checkWritability() {
+    if (!window.claude || !window.claude.use) { setSaveStatus('local', 'Cambios solo en esta sesión'); return; }
+    window.claude.use('artifact').then(function (ns) {
+      if (!ns) { setSaveStatus('local', 'Cambios solo en esta sesión'); return; }
+      setSaveStatus('saved', 'Guardado');
+    }).catch(function () { setSaveStatus('local', 'Cambios solo en esta sesión'); });
+  }
+
+  // ---------- self-publish ----------
+  // The static shell (doctype through the opening seed-data <script> tag) as a constant string,
+  // so a save can republish the ENTIRE page with fresh data embedded — this is the html form of
+  // publish(), which is the one actually supported here. PAGE_HEAD is injected verbatim below by
+  // the tool that generated this file; it must always match the literal markup above it exactly.
+  var PAGE_HEAD = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Content Planner</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --surface-2: #fbfbfd;
+    --surface-3: #f0f0f2;
+    --ink: #1d1d1f;
+    --ink-muted: #6e6e73;
+    --ink-faint: #a1a1a6;
+    --line: rgba(0,0,0,0.08);
+    --line-strong: rgba(0,0,0,0.14);
+    --accent: #0071e3;
+    --accent-weak: rgba(0,113,227,0.10);
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --radius-sm: 9px;
+    --shadow: 0 1px 1px rgba(0,0,0,0.03), 0 10px 30px -14px rgba(0,0,0,0.16);
+
+    --st-pendiente: #8e8e93;   --st-pendiente-bg: rgba(142,142,147,0.13);
+    --st-produccion: #ff9500;  --st-produccion-bg: rgba(255,149,0,0.13);
+    --st-listo: #5e5ce6;       --st-listo-bg: rgba(94,92,230,0.11);
+    --st-publicado: #34c759;   --st-publicado-bg: rgba(52,199,89,0.13);
+    --st-error: #ff3b30;       --st-error-bg: rgba(255,59,48,0.11);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #000000;
+      --surface: #1c1c1e;
+      --surface-2: #232326;
+      --surface-3: #2c2c2e;
+      --ink: #f5f5f7;
+      --ink-muted: #98989d;
+      --ink-faint: #636366;
+      --line: rgba(255,255,255,0.09);
+      --line-strong: rgba(255,255,255,0.16);
+      --accent: #0a84ff;
+      --accent-weak: rgba(10,132,255,0.16);
+      --shadow: 0 1px 1px rgba(0,0,0,0.4), 0 10px 30px -14px rgba(0,0,0,0.7);
+
+      --st-pendiente: #98989d;   --st-pendiente-bg: rgba(152,152,157,0.16);
+      --st-produccion: #ff9f0a;  --st-produccion-bg: rgba(255,159,10,0.16);
+      --st-listo: #7d7aff;       --st-listo-bg: rgba(125,122,255,0.16);
+      --st-publicado: #30d158;  --st-publicado-bg: rgba(48,209,88,0.16);
+      --st-error: #ff453a;      --st-error-bg: rgba(255,69,58,0.16);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #000000; --surface: #1c1c1e; --surface-2: #232326; --surface-3: #2c2c2e;
+    --ink: #f5f5f7; --ink-muted: #98989d; --ink-faint: #636366;
+    --line: rgba(255,255,255,0.09); --line-strong: rgba(255,255,255,0.16);
+    --accent: #0a84ff; --accent-weak: rgba(10,132,255,0.16);
+    --shadow: 0 1px 1px rgba(0,0,0,0.4), 0 10px 30px -14px rgba(0,0,0,0.7);
+    --st-pendiente: #98989d;   --st-pendiente-bg: rgba(152,152,157,0.16);
+    --st-produccion: #ff9f0a;  --st-produccion-bg: rgba(255,159,10,0.16);
+    --st-listo: #7d7aff;       --st-listo-bg: rgba(125,122,255,0.16);
+    --st-publicado: #30d158;  --st-publicado-bg: rgba(48,209,88,0.16);
+    --st-error: #ff453a;      --st-error-bg: rgba(255,69,58,0.16);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.47;
+    -webkit-font-smoothing: antialiased;
+  }
+  .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+  a { color: var(--accent); }
+
+  .app {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 36px 20px 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .heading .kicker {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    margin-bottom: 2px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  .save-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    margin-top: 6px;
+  }
+  .save-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); flex: 0 0 auto; }
+  .save-status[data-state="saved"] .dot { background: var(--st-publicado); }
+  .save-status[data-state="pending"] .dot { background: var(--st-produccion); }
+  .save-status[data-state="pending"] .txt { color: var(--st-produccion); font-weight: 600; }
+  .save-status[data-state="saving"] .dot { background: var(--st-produccion); animation: pulse 1s ease-in-out infinite; }
+  .save-status[data-state="error"] .dot,
+  .save-status[data-state="readonly"] .dot { background: var(--st-error); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  @media (prefers-reduced-motion: reduce) { .save-status[data-state="saving"] .dot { animation: none; } }
+
+  .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  .btn {
+    all: unset;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 980px;
+    color: var(--ink);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .btn:hover { background: var(--surface-3); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn.primary { background: var(--accent); color: #fff; box-shadow: none; }
+  .btn.primary:hover { filter: brightness(1.06); }
+  .btn.subtle { background: transparent; box-shadow: none; color: var(--ink-muted); padding: 8px 10px; }
+  .btn.subtle:hover { color: var(--ink); background: var(--surface-3); }
+
+  .btn.save-cta { background: var(--surface); box-shadow: var(--shadow); border: 1px solid var(--line-strong); color: var(--ink); }
+  .btn.save-cta:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.save-cta:active { transform: scale(0.97); }
+  .btn.save-cta.flash { border-color: var(--st-publicado); color: var(--st-publicado); background: var(--st-publicado-bg); }
+  @media (prefers-reduced-motion: no-preference) { .btn.save-cta { transition: transform 0.1s ease, border-color 0.15s ease, color 0.15s ease, background 0.15s ease; } }
+  .btn svg { width: 15px; height: 15px; }
+
+  /* ---------- Controls row: month nav + view toggle ---------- */
+  .controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .month-nav { display: flex; align-items: center; gap: 4px; }
+  .month-nav button {
+    all: unset; cursor: pointer;
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    color: var(--ink-muted);
+  }
+  .month-nav button:hover { background: var(--surface-3); color: var(--ink); }
+  .month-nav button svg { width: 16px; height: 16px; }
+  .month-label {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    min-width: 150px;
+    text-align: center;
+  }
+  .segmented {
+    display: inline-flex;
+    background: var(--surface-3);
+    border-radius: 980px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .segmented button {
+    all: unset; cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 980px;
+    color: var(--ink-muted);
+  }
+  .segmented button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  /* ---------- Stats ---------- */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+  .stat {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .stat .top { display: flex; align-items: center; gap: 6px; }
+  .stat .swatch { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+  .stat[data-status="pendiente"]  { --dot: var(--st-pendiente); }
+  .stat[data-status="produccion"] { --dot: var(--st-produccion); }
+  .stat[data-status="listo"]      { --dot: var(--st-listo); }
+  .stat[data-status="publicado"]  { --dot: var(--st-publicado); }
+  .stat[data-status="error"]      { --dot: var(--st-error); }
+  .stat .n { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+  .stat .label { font-size: 12px; color: var(--ink-muted); }
+
+  /* ---------- Empty state ---------- */
+  .empty-month {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--ink-muted);
+  }
+  .empty-month p { margin: 6px 0 16px; }
+
+  /* ---------- Platform icons ---------- */
+  .picon { width: 16px; height: 16px; flex: 0 0 auto; display: block; }
+  .picon-sm { width: 13px; height: 13px; flex: 0 0 auto; display: block; }
+
+  /* ---------- Day cards ---------- */
+  .rundown { display: flex; flex-direction: column; gap: 10px; }
+
+  details.day-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  details.day-card > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 16px 20px;
+  }
+  details.day-card > summary::-webkit-details-marker { display: none; }
+  details.day-card > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-lg); }
+
+  .date-block { display: flex; align-items: baseline; gap: 8px; min-width: 118px; }
+  .date-block .dnum { font-size: 28px; font-weight: 300; letter-spacing: -0.02em; }
+  .date-block .wdmo { display: flex; flex-direction: column; line-height: 1.15; }
+  .date-block .wd { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .date-block .mo { font-size: 11.5px; color: var(--ink-muted); }
+  .day-card.today .date-block .dnum,
+  .day-card.today .date-block .wd { color: var(--accent); }
+
+  .platform-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; flex: 1; }
+  .chip-mini { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--ink-muted); font-weight: 500; }
+
+  .status-bar { display: flex; width: 84px; height: 5px; border-radius: 3px; overflow: hidden; background: var(--surface-3); flex: 0 0 auto; }
+  .status-bar span { display: block; height: 100%; }
+  .status-bar .b-pendiente  { background: var(--st-pendiente); }
+  .status-bar .b-produccion { background: var(--st-produccion); }
+  .status-bar .b-listo      { background: var(--st-listo); }
+  .status-bar .b-publicado  { background: var(--st-publicado); }
+  .status-bar .b-error      { background: var(--st-error); }
+
+  .day-count { font-size: 12.5px; color: var(--ink-faint); white-space: nowrap; flex: 0 0 auto; }
+
+  .chevron { flex: 0 0 auto; color: var(--ink-faint); transition: transform 0.18s ease; }
+  .chevron svg { width: 13px; height: 13px; }
+  details[open] > summary .chevron { transform: rotate(90deg); }
+  @media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
+
+  .pieces { border-top: 1px solid var(--line); }
+
+  details.piece { border-bottom: 1px solid var(--line); }
+  details.piece:last-of-type { border-bottom: none; }
+  details.piece[open] { background: var(--surface-2); }
+  details.piece > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+  }
+  details.piece > summary::-webkit-details-marker { display: none; }
+  details.piece > summary:hover { background: var(--surface-2); }
+  details.piece > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .p-platform { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 500; min-width: 128px; flex: 0 0 auto; }
+  .p-format { font-size: 13px; color: var(--ink-muted); min-width: 68px; flex: 0 0 auto; }
+
+  .angle { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .angle.empty { color: var(--ink-faint); font-style: italic; }
+
+  .pill { font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 980px; white-space: nowrap; flex: 0 0 auto; }
+  .pill.pendiente  { color: var(--st-pendiente); background: var(--st-pendiente-bg); }
+  .pill.produccion { color: var(--st-produccion); background: var(--st-produccion-bg); }
+  .pill.listo      { color: var(--st-listo); background: var(--st-listo-bg); }
+  .pill.publicado  { color: var(--st-publicado); background: var(--st-publicado-bg); }
+  .pill.error      { color: var(--st-error); background: var(--st-error-bg); }
+
+  .mini-links { display: flex; gap: 3px; flex: 0 0 auto; }
+  .mlink { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--ink-faint); }
+  .mlink svg { width: 12px; height: 12px; }
+  .mlink.filled { color: var(--accent); }
+
+  .mlink-del {
+    all: unset; cursor: pointer;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    color: var(--ink-faint);
+    flex: 0 0 auto;
+  }
+  .mlink-del svg { width: 13px; height: 13px; }
+  .mlink-del:hover { color: var(--st-error); background: var(--st-error-bg); }
+  .mlink-del.armed { color: var(--st-error); background: var(--st-error-bg); }
+  .mlink-del:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .mlink-dup {
+    all: unset; cursor: pointer;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    color: var(--ink-faint);
+    flex: 0 0 auto;
+  }
+  .mlink-dup svg { width: 13px; height: 13px; }
+  .mlink-dup:hover { color: var(--accent); background: var(--accent-weak); }
+  .mlink-dup:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .linkfield { display: flex; gap: 6px; align-items: center; }
+  .linkfield input { flex: 1; }
+  .open-btn {
+    width: 34px; height: 34px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-sm);
+    background: var(--surface); border: 1px solid var(--line);
+    color: var(--ink-muted);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .open-btn svg { width: 14px; height: 14px; }
+  .open-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .open-btn.disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+  .open-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .piece-detail { padding: 4px 20px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-faint); text-transform: uppercase; }
+  .field input[type="text"], .field input[type="url"], .field input[type="date"], .field textarea, .field select {
+    all: unset;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 13.5px;
+    width: 100%;
+  }
+  .field textarea { min-height: 64px; resize: vertical; line-height: 1.45; white-space: pre-wrap; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+  .field-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .field-row .field { flex: 1; min-width: 200px; }
+  .field-row-3 .field { min-width: 140px; }
+
+  .note-banner {
+    display: flex; gap: 8px; align-items: flex-start;
+    background: var(--st-error-bg); color: var(--st-error);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 12.5px;
+  }
+
+  .piece-detail-footer { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+  .danger-btn {
+    all: unset; cursor: pointer;
+    font-size: 12.5px; font-weight: 500;
+    color: var(--st-error);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+  }
+  .danger-btn:hover { background: var(--st-error-bg); }
+
+  .add-piece-row { padding: 10px 20px 16px; }
+  .add-piece-row button {
+    all: unset; cursor: pointer;
+    font-size: 13px; font-weight: 500;
+    color: var(--accent);
+    padding: 6px 4px;
+  }
+
+  .fab {
+    all: unset; cursor: pointer;
+    position: fixed;
+    right: 28px; bottom: 28px;
+    background: var(--accent); color: #fff;
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 20px -4px rgba(0,113,227,0.55), var(--shadow);
+  }
+  .fab svg { width: 22px; height: 22px; }
+  .fab:hover { filter: brightness(1.05); }
+  .fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- Modal ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.32);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    z-index: 50;
+  }
+  .modal-backdrop[hidden] { display: none; }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px -12px rgba(0,0,0,0.35);
+    width: 100%; max-width: 380px;
+    padding: 22px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .modal h2 { margin: 0; font-size: 17px; font-weight: 600; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+  /* ---------- Lista (table) view ---------- */
+  .table-wrap {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+  table.lista { width: 100%; border-collapse: collapse; min-width: 760px; }
+  table.lista th {
+    text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+    text-transform: uppercase; color: var(--ink-faint);
+    padding: 12px 14px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--surface);
+  }
+  table.lista td {
+    padding: 11px 14px; border-bottom: 1px solid var(--line);
+    font-size: 13.5px; vertical-align: top;
+  }
+  table.lista tr:last-child td { border-bottom: none; }
+  table.lista .cell-platform { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  table.lista .cell-angle { max-width: 220px; }
+  table.lista .cell-copy { max-width: 260px; color: var(--ink-muted); }
+  table.lista .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  table.lista .empty { color: var(--ink-faint); font-style: italic; }
+  table.lista a.link { font-size: 12.5px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+    background: var(--ink); color: var(--bg);
+    padding: 10px 18px; border-radius: 980px;
+    font-size: 13px; font-weight: 500;
+    box-shadow: 0 10px 30px -8px rgba(0,0,0,0.4);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 60;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFC107"/>
+      <stop offset="45%" stop-color="#E1306C"/>
+      <stop offset="100%" stop-color="#833AB4"/>
+    </linearGradient>
+
+    <symbol id="i-instagram" viewBox="0 0 24 24">
+      <rect x="2" y="2" width="20" height="20" rx="6" fill="none" stroke="url(#ig-grad)" stroke-width="2"/>
+      <circle cx="12" cy="12" r="5" fill="none" stroke="url(#ig-grad)" stroke-width="2"/>
+      <circle cx="17.3" cy="6.7" r="1.4" fill="url(#ig-grad)"/>
+    </symbol>
+    <symbol id="i-facebook" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" fill="#1877F2"/>
+      <path d="M13.6 21v-7.2h2.3l.35-2.8h-2.65V9.2c0-.8.2-1.35 1.35-1.35h1.42V5.7c-.25-.03-1.1-.1-2.1-.1-2.1 0-3.5 1.28-3.5 3.62v2.06H8.6v2.8h2.17V21z" fill="#fff"/>
+    </symbol>
+    <symbol id="i-linkedin" viewBox="0 0 24 24">
+      <rect x="2" y="2" width="20" height="20" rx="4" fill="#0A66C2"/>
+      <circle cx="7.6" cy="7.8" r="1.7" fill="#fff"/>
+      <rect x="6.3" y="10.4" width="2.6" height="7.7" fill="#fff"/>
+      <path d="M11.4 10.4h2.5v1.2h.04c.35-.65 1.2-1.4 2.5-1.4 2.68 0 3.17 1.73 3.17 3.98v4.9h-2.6v-4.34c0-1.04-.02-2.36-1.44-2.36-1.45 0-1.67 1.12-1.67 2.28v4.42h-2.6z" fill="#fff"/>
+    </symbol>
+    <symbol id="i-youtube" viewBox="0 0 24 24">
+      <rect x="1.2" y="5" width="21.6" height="14" rx="5" fill="#FF0000"/>
+      <path d="M10 8.7l6.2 3.3-6.2 3.3z" fill="#fff"/>
+    </symbol>
+    <symbol id="i-tiktok" viewBox="0 0 24 24">
+      <path d="M13.6 3v11.6a2.6 2.6 0 1 1-2.6-2.6c.18 0 .35.01.52.04V9.4a5.1 5.1 0 1 0 4.58 5.07V9.7c1.02.72 2.24 1.14 3.6 1.14V8.14c-2.05-.16-3.68-1.74-4.1-3.77z" fill="#010101" transform="translate(-0.6,0)"/>
+      <path d="M13 3v11.6a2.6 2.6 0 1 1-2.6-2.6c.18 0 .35.01.52.04V9.4a5.1 5.1 0 1 0 4.58 5.07" fill="none" stroke="#25F4EE" stroke-width="0.7" opacity="0.85" transform="translate(-1.3,0.5)"/>
+      <path d="M13 3v11.6a2.6 2.6 0 1 1-2.6-2.6c.18 0 .35.01.52.04V9.4a5.1 5.1 0 1 0 4.58 5.07" fill="none" stroke="#FE2C55" stroke-width="0.7" opacity="0.85" transform="translate(0.1,-0.5)"/>
+    </symbol>
+    <symbol id="i-email" viewBox="0 0 24 24">
+      <rect x="2" y="4.5" width="20" height="15" rx="3" fill="#6E6E73"/>
+      <path d="M3 6.5l9 6.2 9-6.2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-newsletter" viewBox="0 0 24 24">
+      <rect x="3" y="3" width="15" height="18" rx="2" fill="#5E5CE6"/>
+      <rect x="6.5" y="7" width="8" height="1.6" rx="0.8" fill="#fff"/>
+      <rect x="6.5" y="10.4" width="8" height="1.6" rx="0.8" fill="#fff"/>
+      <rect x="6.5" y="13.8" width="5" height="1.6" rx="0.8" fill="#fff"/>
+    </symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-material" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 5v14M16 5v14M3 9h5M3 15h5M16 9h5M16 15h5" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-portada" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="currentColor"/><path d="M21 16l-5.5-5.5L5 20" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-notas" viewBox="0 0 24 24"><path d="M4 4h13l3 3v13H4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M17 4v3h3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-publicado" viewBox="0 0 24 24"><path d="M10 14L21 3M21 3h-6M21 3v6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-duplicate" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 4v6h7V4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 20v-6h8v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M9 15L20 4M20 4h-6M20 4v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="heading">
+      <span class="kicker">Mastery Haus</span>
+      <h1>Tablero de Salida</h1>
+      <div class="save-status" id="save-status" data-state="local"><span class="dot"></span><span class="txt">Cargando…</span></div>
+    </div>
+    <div class="header-actions">
+      <button class="btn save-cta" id="save-btn"><svg><use href="#i-save"/></svg><span class="btn-label">Guardar</span></button>
+      <button class="btn subtle" id="export-btn"><svg><use href="#i-download"/></svg>Exportar CSV</button>
+      <button class="btn primary" id="add-btn-header"><svg><use href="#i-plus"/></svg>Nueva pieza</button>
+    </div>
+  </header>
+
+  <div class="controls-row">
+    <div class="month-nav">
+      <button id="month-prev" aria-label="Mes anterior"><svg><use href="#i-chevron-left"/></svg></button>
+      <span class="month-label tnum" id="month-label">—</span>
+      <button id="month-next" aria-label="Mes siguiente"><svg><use href="#i-chevron"/></svg></button>
+    </div>
+    <div class="segmented" id="view-toggle">
+      <button class="active" data-view="agenda">Agenda</button>
+      <button data-view="lista">Lista</button>
+    </div>
+  </div>
+
+  <section class="stats-strip" id="stats"></section>
+
+  <main id="content"></main>
+
+</div>
+
+<button class="fab" id="fab-add" aria-label="Nueva pieza"><svg><use href="#i-plus"/></svg></button>
+
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+  <div class="modal">
+    <h2>Nueva pieza</h2>
+    <div class="field">
+      <label>Fecha</label>
+      <input type="date" id="modal-date">
+    </div>
+    <div class="field-row field-row-3">
+      <div class="field">
+        <label>Plataforma</label>
+        <select id="modal-platform">
+          <option value="instagram">Instagram</option>
+          <option value="instagram_mh">Instagram MH</option>
+          <option value="facebook">Facebook</option>
+          <option value="linkedin">LinkedIn</option>
+          <option value="youtube">YouTube</option>
+          <option value="tiktok">TikTok</option>
+          <option value="email">Email Marketing</option>
+          <option value="newsletter">Newsletter</option>
+        </select>
+      </div>
+      <div class="field" id="modal-format-field">
+        <label id="modal-format-label">Formato</label>
+        <div id="modal-format-slot"><select id="modal-format"></select></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Ángulo / título (opcional)</label>
+      <input type="text" id="modal-angle" placeholder="Ej: Testimonio Full Day">
+    </div>
+    <div class="modal-actions">
+      <button class="btn subtle" id="modal-cancel">Cancelar</button>
+      <button class="btn primary" id="modal-submit">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script id="seed-data" type="application/json">
+`;
+
+  function buildFullHtml() {
+    var seedJson = JSON.stringify({ pieces: flattenPieces() }, null, 2);
+    var appSrc = TableroApp.toString();
+    // The closing-script-tag text below is deliberately split with a backslash — written
+    // whole, that raw byte sequence inside this very script element would make the HTML
+    // tokenizer end the tag right there, breaking the page it's meant to produce.
+    return PAGE_HEAD + seedJson +
+      '\n<\/script>\n\n<script>\n' + appSrc +
+      '\nTableroApp(JSON.parse(document.getElementById(\'seed-data\').textContent));\n' +
+      '<\/script>\n\n</body>\n</html>\n';
+  }
+
+  // ---------- persistence ----------
+  // Saving is manual-only (the "Guardar" button) — see markDirty. Nothing auto-publishes while
+  // editing, because every publish reloads this view, which used to collapse whatever was open
+  // mid-edit. saveTimer below is used only to retry after a transient publish error.
+  function saveNow() {
+    clearTimeout(saveTimer);
+    if (hasUnsavedChanges()) doSave();
+  }
+
+  // Gives a manual "Guardar" click visible feedback regardless of what triggered it —
+  // the click itself is confirmed instantly; the header status dot tracks the real network result.
+  function handleSaveClick(btn) {
+    var label = btn.querySelector('.btn-label');
+    if (!hasUnsavedChanges()) {
+      showToast('Ya está todo guardado.');
+      if (label) {
+        var original = label.textContent;
+        btn.classList.add('flash');
+        label.textContent = '✓ Guardado';
+        setTimeout(function () { btn.classList.remove('flash'); label.textContent = original; }, 1400);
+      }
+      return;
+    }
+    if (label) { label.textContent = 'Guardando…'; }
+    saveNow();
+    setTimeout(function () {
+      if (!label) return;
+      btn.classList.add('flash');
+      label.textContent = '✓ Guardado';
+      setTimeout(function () { btn.classList.remove('flash'); label.textContent = 'Guardar'; }, 1400);
+    }, 700);
+  }
+
+  function doSave() {
+    if (saveInFlight) return; // a publish is already running; it will re-check and re-save when it finishes
+    if (!hasUnsavedChanges()) { setSaveStatus('saved', 'Guardado'); return; }
+    if (!window.claude || !window.claude.use) { setSaveStatus('local', 'Cambios solo en esta sesión'); return; }
+
+    var snapshotVersion = docVersion;
+    var html = buildFullHtml();
+    stashUiState();
+
+    saveInFlight = true;
+    window.claude.use('artifact').then(function (ns) {
+      if (!ns) { saveInFlight = false; setSaveStatus('local', 'Cambios solo en esta sesión'); return; }
+      return ns.publish(html).then(function () {
+        // A successful html-form publish reloads this view — this just covers the moment before that happens.
+        docSavedVersion = snapshotVersion;
+        saveInFlight = false;
+        setSaveStatus('saved', 'Guardado');
+      }).catch(function (err) {
+        saveInFlight = false;
+        handleSaveError(err);
+      });
+    }).catch(function (err) {
+      console.error('[tablero] claude.use("artifact") failed:', err);
+      saveInFlight = false;
+      setSaveStatus('local', 'Cambios solo en esta sesión');
+    });
+  }
+
+  function handleSaveError(err) {
+    var code = err && err.code;
+    console.error('[tablero] publish failed:', err);
+    if (code === 'conflict') {
+      // Someone else published first — the platform is already reloading every open view
+      // (this one included) to that winning version, so there's nothing to reconcile by hand.
+      setSaveStatus('saving', 'Sincronizando con la última versión…');
+      showToast('Se actualizó con cambios guardados por otra persona.');
+    } else if (code === 'not_writer' || code === 'not_granted') {
+      writable = false;
+      setSaveStatus('readonly', 'Solo lectura');
+    } else if (code === 'rate_limited') {
+      setSaveStatus('error', 'Reintentando (' + code + ')…');
+      saveTimer = setTimeout(doSave, 3000);
+    } else if (code === 'upstream_error') {
+      setSaveStatus('error', 'Reintentando (' + code + ')…');
+      saveTimer = setTimeout(doSave, 2500);
+    } else {
+      setSaveStatus('error', 'No se pudo guardar — ' + (code || (err && err.message) || 'error desconocido'));
+    }
+  }
+
+  function setSaveStatus(state, text) {
+    var el = $('save-status');
+    el.setAttribute('data-state', state);
+    el.querySelector('.txt').textContent = text;
+  }
+
+  function showToast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () { t.classList.remove('show'); }, 3200);
+  }
+
+  // ---------- mutations ----------
+  function addPiece(date, platform, format, angle) {
+    var mk = monthKey(date);
+    var piece = { id: uid(), date: date, platform: platform, format: format, angle: angle || '', copy: '', material: '', portada: '', estado: 'pendiente', notas: '', publicado: '' };
+    ensureMonthArray(mk).push(piece);
+    markDirty();
+    var parts = mk.split('-').map(Number);
+    currentMonth = { y: parts[0], m: parts[1] };
+    renderAll(piece.id);
+  }
+
+  function updateField(id, field, value) {
+    var found = findPieceById(id);
+    if (!found) return;
+    if (field === 'date') {
+      var newMk = monthKey(value);
+      if (newMk !== found.mk) {
+        found.piece.date = value;
+        ensureMonthArray(found.mk).splice(found.idx, 1);
+        ensureMonthArray(newMk).push(found.piece);
+        markDirty();
+        return;
+      }
+    }
+    var oldPlatform = found.piece.platform;
+    found.piece[field] = value;
+    if (field === 'platform' && value !== oldPlatform) {
+      if (usesFreeformFormat(value)) {
+        found.piece.format = '';
+      } else if (formatsFor(value).indexOf(found.piece.format) === -1) {
+        found.piece.format = formatsFor(value)[0];
+      }
+    }
+    markDirty();
+  }
+
+  function removePiece(id) {
+    var found = findPieceById(id);
+    if (!found) return;
+    ensureMonthArray(found.mk).splice(found.idx, 1);
+    markDirty();
+    renderAll();
+    showToast('Pieza eliminada — tocá Guardar para confirmar.');
+  }
+
+  // Same date/ángulo/copy/material/portada/notas — for repurposing one piece of content
+  // across platforms without retyping it. Estado vuelve a "pendiente" y el link publicado se
+  // limpia, porque la copia todavía no salió; la plataforma queda igual para editarla al toque.
+  function duplicatePiece(id) {
+    var found = findPieceById(id);
+    if (!found) return;
+    var copy = {};
+    Object.keys(found.piece).forEach(function (k) { copy[k] = found.piece[k]; });
+    copy.id = uid();
+    copy.estado = 'pendiente';
+    copy.publicado = '';
+    ensureMonthArray(found.mk).splice(found.idx + 1, 0, copy);
+    markDirty();
+    renderAll(copy.id);
+    showToast('Pieza duplicada — ajustá la plataforma y el copy.');
+  }
+
+  // ---------- rendering ----------
+  function collectOpenState() {
+    var open = { days: {}, pieces: {} };
+    document.querySelectorAll('details.day-card[open]').forEach(function (d) { open.days[d.dataset.day] = true; });
+    document.querySelectorAll('details.piece[open]').forEach(function (d) { open.pieces[d.dataset.id] = true; });
+    if (pendingRestoreOpen) {
+      Object.keys(pendingRestoreOpen.days).forEach(function (d) { open.days[d] = true; });
+      Object.keys(pendingRestoreOpen.pieces).forEach(function (p) { open.pieces[p] = true; });
+      pendingRestoreOpen = null; // consume once — subsequent renders reflect real DOM state again
+    }
+    return open;
+  }
+
+  function monthPieces() {
+    var mk = currentMonth.y + '-' + pad2(currentMonth.m);
+    return ensureMonthArray(mk);
+  }
+
+  function renderAll(forceOpenId) {
+    $('month-label').textContent = MO_FULL[currentMonth.m - 1] + ' ' + currentMonth.y;
+    var open = collectOpenState();
+    if (forceOpenId) {
+      open.pieces[forceOpenId] = true;
+      var forced = findPieceById(forceOpenId);
+      if (forced) open.days[forced.piece.date] = true;
+    }
+
+    var pieces = monthPieces();
+    renderStats(pieces);
+
+    var content = $('content');
+    if (viewMode === 'agenda') {
+      content.innerHTML = renderAgenda(pieces, open, forceOpenId);
+    } else {
+      content.innerHTML = renderLista(pieces);
+    }
+  }
+
+  function renderStats(pieces) {
+    var counts = { pendiente: 0, produccion: 0, listo: 0, publicado: 0, error: 0 };
+    pieces.forEach(function (p) { if (counts[p.estado] !== undefined) counts[p.estado]++; });
+    var order = ['pendiente', 'produccion', 'listo', 'publicado', 'error'];
+    $('stats').innerHTML = order.map(function (k) {
+      return '<div class="stat" data-status="' + k + '">' +
+        '<div class="top"><span class="swatch"></span><span class="n tnum">' + counts[k] + '</span></div>' +
+        '<span class="label">' + STATUS_META[k].label + '</span></div>';
+    }).join('');
+  }
+
+  function renderAgenda(pieces, open, forceOpenId) {
+    if (!pieces.length) {
+      return '<div class="empty-month"><p>No hay piezas planificadas para este mes todavía.</p>' +
+        '<button class="btn primary" id="empty-add-btn"><svg><use href="#i-plus"/></svg>Agregar la primera pieza</button></div>';
+    }
+    var byDate = {};
+    pieces.forEach(function (p) { (byDate[p.date] = byDate[p.date] || []).push(p); });
+    var dates = Object.keys(byDate).sort();
+    var t = todayLocal();
+    var todayStr = toDateInputValue(t);
+
+    return '<div class="rundown">' + dates.map(function (date) {
+      var dayPieces = byDate[date];
+      var d = parseDate(date);
+      var isToday = date === todayStr;
+      var isOpen = !!open.days[date];
+      var counts = { pendiente: 0, produccion: 0, listo: 0, publicado: 0, error: 0 };
+      dayPieces.forEach(function (p) { counts[p.estado]++; });
+      var platformCounts = {};
+      dayPieces.forEach(function (p) { platformCounts[p.platform] = (platformCounts[p.platform] || 0) + 1; });
+
+      var barSegs = ['pendiente', 'produccion', 'listo', 'publicado', 'error'].filter(function (k) { return counts[k] > 0; })
+        .map(function (k) { return '<span class="b-' + k + '" style="width:' + (counts[k] / dayPieces.length * 100) + '%"></span>'; }).join('');
+
+      var chipHtml = Object.keys(platformCounts).map(function (pf) {
+        return '<span class="chip-mini"><svg class="picon-sm"><use href="#' + PLATFORM_META[pf].icon + '"/></svg>' + platformCounts[pf] + '</span>';
+      }).join('');
+
+      return '<details class="day-card' + (isToday ? ' today' : '') + '" data-day="' + date + '"' + (isOpen ? ' open' : '') + '>' +
+        '<summary>' +
+          '<div class="date-block">' +
+            '<span class="dnum tnum">' + d.getDate() + '</span>' +
+            '<div class="wdmo"><span class="wd">' + WD[d.getDay()] + '</span><span class="mo">' + MO_SHORT[d.getMonth()] + '</span></div>' +
+          '</div>' +
+          '<div class="platform-summary">' + chipHtml + '</div>' +
+          '<div class="status-bar">' + barSegs + '</div>' +
+          '<span class="day-count">' + dayPieces.length + (dayPieces.length === 1 ? ' pieza' : ' piezas') + '</span>' +
+          '<span class="chevron"><svg><use href="#i-chevron"/></svg></span>' +
+        '</summary>' +
+        '<div class="pieces">' +
+          dayPieces.map(function (p) { return renderPiece(p, !!open.pieces[p.id] || p.id === forceOpenId); }).join('') +
+        '</div>' +
+        '<div class="add-piece-row"><button data-action="add-to-day" data-date="' + date + '">+ Agregar pieza a este día</button></div>' +
+      '</details>';
+    }).join('') + '</div>';
+  }
+
+  function normalizeUrl(v) {
+    v = (v || '').trim();
+    if (!v) return null;
+    if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+    return v;
+  }
+
+  function linkFieldHtml(p, field, placeholder) {
+    var val = p[field] || '';
+    var url = normalizeUrl(val);
+    return '<div class="linkfield">' +
+      '<input type="text" value="' + esc(val) + '" data-id="' + p.id + '" data-field="' + field + '" placeholder="' + esc(placeholder) + '">' +
+      '<a class="open-btn' + (url ? '' : ' disabled') + '"' + (url ? ' href="' + esc(url) + '"' : '') + ' target="_blank" rel="noopener noreferrer" title="Abrir link"><svg><use href="#i-open"/></svg></a>' +
+      '</div>';
+  }
+
+  function formatFieldHtml(p) {
+    if (usesFreeformFormat(p.platform)) {
+      var meta = FREEFORM_META[p.platform];
+      return '<div class="field"><label>' + esc(meta.label) + '</label><input type="text" value="' + esc(p.format) + '" data-id="' + p.id + '" data-field="format" placeholder="' + esc(meta.placeholder) + '"></div>';
+    }
+    return '<div class="field"><label>Formato</label><select data-id="' + p.id + '" data-field="format">' +
+      formatsFor(p.platform).map(function (k) { return '<option value="' + k + '"' + (k === p.format ? ' selected' : '') + '>' + FORMAT_LABEL[k] + '</option>'; }).join('') +
+      '</select></div>';
+  }
+
+  function renderPiece(p, isOpen) {
+    var pf = PLATFORM_META[p.platform] || PLATFORM_META.instagram;
+    var st = STATUS_META[p.estado] || STATUS_META.pendiente;
+    var mini = [
+      ['copy', 'i-copy', p.copy, 'Copy'],
+      ['material', 'i-material', p.material, 'Material'],
+      ['portada', 'i-portada', p.portada, 'Portada'],
+      ['notas', 'i-notas', p.notas, 'Notas'],
+      ['publicado', 'i-publicado', p.publicado, 'Link publicado']
+    ].map(function (m) {
+      var filled = m[2] && m[2].trim();
+      return '<span class="mlink' + (filled ? ' filled' : '') + '" title="' + (filled ? m[3] + ' cargado' : 'Sin ' + m[3].toLowerCase()) + '"><svg><use href="#' + m[1] + '"/></svg></span>';
+    }).join('');
+
+    return '<details class="piece" data-id="' + p.id + '"' + (isOpen ? ' open' : '') + '>' +
+      '<summary>' +
+        '<span class="p-platform"><svg class="picon"><use href="#' + pf.icon + '"/></svg>' + esc(pf.label) + '</span>' +
+        '<span class="p-format">' + esc(FORMAT_LABEL[p.format] || p.format) + '</span>' +
+        '<span class="angle' + (p.angle ? '' : ' empty') + '">' + (p.angle ? esc(p.angle) : 'Sin ángulo cargado') + '</span>' +
+        '<span class="pill ' + st.cls + '">' + st.label + '</span>' +
+        '<span class="mini-links">' + mini + '</span>' +
+        '<button class="mlink-dup" data-action="duplicate" data-id="' + p.id + '" title="Duplicar (para otra plataforma)"><svg><use href="#i-duplicate"/></svg></button>' +
+        '<button class="mlink-del" data-action="delete" data-id="' + p.id + '" title="Eliminar pieza"><svg><use href="#i-trash"/></svg></button>' +
+      '</summary>' +
+      '<div class="piece-detail">' +
+        (p.estado === 'error' ? '<div class="note-banner">Esta pieza está marcada <b>Demorado</b> — revisá qué falta para destrabarla.</div>' : '') +
+        '<div class="field-row field-row-3">' +
+          '<div class="field"><label>Fecha</label><input type="date" value="' + p.date + '" data-id="' + p.id + '" data-field="date"></div>' +
+          '<div class="field"><label>Plataforma</label><select data-id="' + p.id + '" data-field="platform">' +
+            Object.keys(PLATFORM_META).map(function (k) { return '<option value="' + k + '"' + (k === p.platform ? ' selected' : '') + '>' + PLATFORM_META[k].label + '</option>'; }).join('') +
+          '</select></div>' +
+          formatFieldHtml(p) +
+        '</div>' +
+        '<div class="field"><label>Ángulo / título</label><input type="text" value="' + esc(p.angle) + '" data-id="' + p.id + '" data-field="angle"></div>' +
+        '<div class="field"><label>Copy</label><textarea data-id="' + p.id + '" data-field="copy">' + esc(p.copy) + '</textarea></div>' +
+        '<div class="field-row">' +
+          '<div class="field"><label>Material terminado</label>' + linkFieldHtml(p, 'material', 'Link a la pieza terminada') + '</div>' +
+          '<div class="field"><label>Portada</label>' + linkFieldHtml(p, 'portada', 'Link a la portada') + '</div>' +
+        '</div>' +
+        '<div class="field-row">' +
+          '<div class="field"><label>Estado</label><select data-id="' + p.id + '" data-field="estado">' +
+            Object.keys(STATUS_META).map(function (k) { return '<option value="' + k + '"' + (k === p.estado ? ' selected' : '') + '>' + STATUS_META[k].label + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="field"><label>Link publicado</label>' + linkFieldHtml(p, 'publicado', 'Se completa al publicar') + '</div>' +
+        '</div>' +
+        '<div class="field"><label>Notas</label><textarea data-id="' + p.id + '" data-field="notas">' + esc(p.notas) + '</textarea></div>' +
+        '<div class="piece-detail-footer">' +
+          '<button class="btn subtle" data-action="duplicate" data-id="' + p.id + '"><svg><use href="#i-duplicate"/></svg>Duplicar</button>' +
+          '<button class="btn save-cta" data-action="save-now"><svg><use href="#i-save"/></svg><span class="btn-label">Guardar</span></button>' +
+          '<button class="danger-btn" data-action="delete" data-id="' + p.id + '">Eliminar pieza</button>' +
+        '</div>' +
+      '</div>' +
+    '</details>';
+  }
+
+  function renderLista(pieces) {
+    if (!pieces.length) {
+      return '<div class="empty-month"><p>No hay piezas planificadas para este mes todavía.</p></div>';
+    }
+    var sorted = pieces.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var rows = sorted.map(function (p) {
+      var pf = PLATFORM_META[p.platform] || PLATFORM_META.instagram;
+      var st = STATUS_META[p.estado] || STATUS_META.pendiente;
+      var d = parseDate(p.date);
+      return '<tr>' +
+        '<td class="tnum">' + WD[d.getDay()] + ' ' + pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '</td>' +
+        '<td><span class="cell-platform"><svg class="picon-sm"><use href="#' + pf.icon + '"/></svg>' + esc(pf.label) + '</span></td>' +
+        '<td>' + esc(FORMAT_LABEL[p.format] || p.format) + '</td>' +
+        '<td class="cell-angle"><span class="truncate' + (p.angle ? '' : ' empty') + '">' + (p.angle ? esc(p.angle) : 'Sin ángulo') + '</span></td>' +
+        '<td><span class="pill ' + st.cls + '">' + st.label + '</span></td>' +
+        '<td class="cell-copy"><span class="truncate' + (p.copy ? '' : ' empty') + '">' + (p.copy ? esc(p.copy.split('\n')[0]) : 'Sin copy') + '</span></td>' +
+        '<td>' + (p.publicado ? '<a class="link" href="#" onclick="return false">' + esc(p.publicado) + '</a>' : '<span class="empty">—</span>') + '</td>' +
+        '<td><button class="danger-btn" data-action="delete" data-id="' + p.id + '">Eliminar</button></td>' +
+      '</tr>';
+    }).join('');
+
+    return '<div class="table-wrap"><table class="lista"><thead><tr>' +
+      '<th>Fecha</th><th>Plataforma</th><th>Formato</th><th>Ángulo</th><th>Estado</th><th>Copy</th><th>Publicado</th><th>Acciones</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  // ---------- events ----------
+  function wireStaticEvents() {
+    window.addEventListener('beforeunload', function (e) {
+      if (hasUnsavedChanges()) { e.preventDefault(); e.returnValue = ''; }
+    });
+    $('month-prev').addEventListener('click', function () {
+      currentMonth.m--; if (currentMonth.m < 1) { currentMonth.m = 12; currentMonth.y--; }
+      renderAll();
+    });
+    $('month-next').addEventListener('click', function () {
+      currentMonth.m++; if (currentMonth.m > 12) { currentMonth.m = 1; currentMonth.y++; }
+      renderAll();
+    });
+    $('view-toggle').addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-view]');
+      if (!btn) return;
+      viewMode = btn.dataset.view;
+      $('view-toggle').querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      renderAll();
+    });
+
+    $('add-btn-header').addEventListener('click', openModal);
+    $('fab-add').addEventListener('click', openModal);
+    $('modal-platform').addEventListener('change', populateModalFormats);
+    $('modal-cancel').addEventListener('click', closeModal);
+    $('modal-backdrop').addEventListener('click', function (e) { if (e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+    $('modal-submit').addEventListener('click', function () {
+      var date = $('modal-date').value;
+      if (!date) { $('modal-date').focus(); return; }
+      addPiece(date, $('modal-platform').value, $('modal-format').value, $('modal-angle').value.trim());
+      closeModal();
+    });
+
+    $('export-btn').addEventListener('click', exportCsv);
+    $('save-btn').addEventListener('click', function () { handleSaveClick(this); });
+
+    document.addEventListener('click', function (e) {
+      var addToDay = e.target.closest('[data-action="add-to-day"]');
+      if (addToDay) { addPiece(addToDay.dataset.date, 'instagram', 'REEL', ''); return; }
+
+      var emptyAdd = e.target.closest('#empty-add-btn');
+      if (emptyAdd) { openModal(); return; }
+
+      var saveNowBtn = e.target.closest('[data-action="save-now"]');
+      if (saveNowBtn) { handleSaveClick(saveNowBtn); return; }
+
+      var dup = e.target.closest('[data-action="duplicate"]');
+      if (dup) { e.preventDefault(); duplicatePiece(dup.dataset.id); return; }
+
+      var del = e.target.closest('[data-action="delete"]');
+      if (del) {
+        e.preventDefault(); // avoid toggling a parent <summary> when the button lives there
+        if (del.dataset.armed === '1') {
+          removePiece(del.dataset.id);
+        } else {
+          var originalLabel = del.textContent;
+          del.dataset.armed = '1';
+          del.classList.add('armed');
+          if (originalLabel.trim()) del.textContent = 'Confirmar borrado';
+          del.title = 'Tocá de nuevo para confirmar';
+          setTimeout(function () {
+            del.dataset.armed = '0';
+            del.classList.remove('armed');
+            if (originalLabel.trim()) del.textContent = originalLabel;
+            del.title = 'Eliminar pieza';
+          }, 4000);
+        }
+        return;
+      }
+    });
+
+    document.addEventListener('input', function (e) {
+      var t = e.target;
+      if (!t.dataset || !t.dataset.field || !t.dataset.id) return;
+      if (t.tagName === 'SELECT') return;
+      applyFieldChange(t.dataset.id, t.dataset.field, t.value, t);
+      if (t.closest('.linkfield')) {
+        var openLink = t.closest('.linkfield').querySelector('.open-btn');
+        var url = normalizeUrl(t.value);
+        if (openLink) {
+          if (url) { openLink.setAttribute('href', url); openLink.classList.remove('disabled'); }
+          else { openLink.removeAttribute('href'); openLink.classList.add('disabled'); }
+        }
+      }
+    });
+    document.addEventListener('change', function (e) {
+      var t = e.target;
+      if (!t.dataset || !t.dataset.field || !t.dataset.id) return;
+      if (t.tagName !== 'SELECT' && t.type !== 'date') return;
+      applyFieldChange(t.dataset.id, t.dataset.field, t.value, t, true);
+    });
+  }
+
+  function applyFieldChange(id, field, value, inputEl, structural) {
+    updateField(id, field, value);
+    var pieceEl = inputEl.closest('details.piece');
+    if (!pieceEl) return;
+
+    if (field === 'angle') {
+      var angleSpan = pieceEl.querySelector('summary .angle');
+      angleSpan.textContent = value || 'Sin ángulo cargado';
+      angleSpan.classList.toggle('empty', !value);
+    } else if (field === 'estado') {
+      var pillSpan = pieceEl.querySelector('summary .pill');
+      var st = STATUS_META[value];
+      pillSpan.className = 'pill ' + st.cls;
+      pillSpan.textContent = st.label;
+    } else if (field === 'format') {
+      var formatSpan = pieceEl.querySelector('summary .p-format');
+      if (formatSpan) formatSpan.textContent = value || '—';
+    }
+    refreshMiniLinks(pieceEl, id);
+
+    if (structural && (field === 'date' || field === 'platform' || field === 'format')) {
+      renderAll(id);
+    }
+  }
+
+  function refreshMiniLinks(pieceEl) {
+    var id = pieceEl.dataset.id;
+    var found = findPieceById(id);
+    if (!found) return;
+    var piece = found.piece;
+    var order = ['copy', 'material', 'portada', 'notas', 'publicado'];
+    var icons = pieceEl.querySelectorAll('summary .mini-links .mlink');
+    order.forEach(function (key, i) {
+      var filled = piece[key] && piece[key].trim();
+      icons[i].classList.toggle('filled', !!filled);
+    });
+  }
+
+  function populateModalFormats() {
+    var platform = $('modal-platform').value;
+    if (usesFreeformFormat(platform)) {
+      var meta = FREEFORM_META[platform];
+      $('modal-format-label').textContent = meta.label;
+      $('modal-format-slot').innerHTML = '<input type="text" id="modal-format" placeholder="' + esc(meta.placeholder) + '">';
+      return;
+    }
+    $('modal-format-label').textContent = 'Formato';
+    var opts = formatsFor(platform);
+    $('modal-format-slot').innerHTML = '<select id="modal-format">' +
+      opts.map(function (k) { return '<option value="' + k + '">' + FORMAT_LABEL[k] + '</option>'; }).join('') + '</select>';
+  }
+
+  function openModal() {
+    $('modal-date').value = toDateInputValue(todayLocal());
+    $('modal-angle').value = '';
+    $('modal-platform').value = 'instagram';
+    populateModalFormats();
+    $('modal-backdrop').hidden = false;
+    $('modal-date').focus();
+  }
+  function closeModal() { $('modal-backdrop').hidden = true; }
+
+  // ---------- CSV export ----------
+  function csvEscape(v) {
+    v = v == null ? '' : String(v);
+    if (/[",\n]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+    return v;
+  }
+
+  function buildCsv() {
+    var header = ['Fecha', 'Plataforma', 'Formato', 'Ángulo', 'Copy', 'Material', 'Portada', 'Estado', 'Notas', 'Link publicado'];
+    var sorted = flattenPieces().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var lines = [header.join(',')];
+    sorted.forEach(function (p) {
+      var pf = PLATFORM_META[p.platform] || {};
+      lines.push([
+        p.date, pf.label || p.platform, FORMAT_LABEL[p.format] || p.format,
+        p.angle, p.copy, p.material, p.portada,
+        (STATUS_META[p.estado] || {}).label || p.estado, p.notas, p.publicado
+      ].map(csvEscape).join(','));
+    });
+    return lines.join('\r\n');
+  }
+  function exportCsv() {
+    var csv = buildCsv();
+    if (!window.claude || !window.claude.use) { showToast('La descarga no está disponible en esta vista.'); return; }
+    window.claude.use('downloads').then(function (ns) {
+      if (!ns) { showToast('La descarga no está disponible en esta vista.'); return; }
+      return ns.save({ filename: 'tablero-contenidos.csv', data: '﻿' + csv }).then(function () {
+        showToast('Descargado — guardalo en tu Drive como respaldo.');
+      }).catch(function (err) {
+        if (err && err.code !== 'declined') showToast('No se pudo descargar el archivo.');
+      });
+    }).catch(function () { showToast('La descarga no está disponible en esta vista.'); });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+}
+TableroApp(JSON.parse(document.getElementById('seed-data').textContent));
+</script>
+
+</body>
+</html>
+
