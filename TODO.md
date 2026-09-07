@@ -7,17 +7,18 @@ Convención: `[ ]` pendiente, `[~]` en curso, `[x]` hecho.
 ---
 
 ## Fase 0 — Setup del proyecto
-- [ ] Inicializar repo git y hacer el primer commit (incluyendo `mockup.html`, `CLAUDE.md`, `DECISIONS.md`, `TODO.md`).
-- [ ] Scaffold de Next.js (App Router, TypeScript).
-- [ ] Crear proyecto en Supabase (Postgres + Auth + Storage).
-- [ ] Variables de entorno: credenciales de Supabase, App ID / App Secret de Meta (el token permanente se agrega en Fase 5).
-- [ ] Conectar el repo a Vercel para deploy automático (ambiente de preview + producción).
+- [x] Inicializar repo git y hacer el primer commit (incluyendo `mockup.html`, `CLAUDE.md`, `DECISIONS.md`, `TODO.md`).
+- [x] Scaffold de Next.js 16 (App Router, TypeScript, sin Tailwind) + cliente de Supabase instalado (`@supabase/supabase-js`, `@supabase/ssr`).
+- [x] Crear proyecto en Supabase (Postgres + Auth + Storage). Credenciales cargadas en `.env.local` y verificadas (URL + anon key + service role key responden correctamente contra el proyecto real).
+- [x] Variables de entorno completas en `.env.local` (Supabase listo; `META_APP_ID`/`META_APP_SECRET` ya cargados también; `META_ACCESS_TOKEN` queda vacío hasta Fase 5 a propósito).
+- [ ] Conectar el repo a Vercel para deploy automático (ambiente de preview + producción). CLI de Vercel instalada (`vercel` como devDependency) — falta que la usuaria corra `npx vercel login` desde su terminal (login interactivo por navegador).
 
-## Fase 1 — Modelo de datos
-- [ ] Diseñar esquema: `brands` (Mastery Haus, Sofia Contreras), `users`, `pieces` (con `brand_id` FK).
-- [ ] Migrar el modelo de `pieces` visto en el JSON embebido de `mockup.html` (date, platform, format, angle, copy, material, portada, estado, notas, publicado) a columnas de la tabla.
-- [ ] Script de seed para cargar el contenido ya existente en `mockup.html` como datos reales de Mastery Haus.
-- [ ] Definir constraints/enums de `platform`, `format` (dependiente de `platform`) y `estado` según `PLATFORM_FORMATS` / `STATUS_META` del JS del mockup.
+## Fase 1 — Modelo de datos ✅
+- [x] Diseñar esquema: `brands` (Mastery Haus, Sofia Contreras), `pieces` (con `brand_id` FK). `users` se maneja vía Supabase Auth nativo (`auth.users`), sin tabla propia — no hace falta con auth simple sin roles (Decisión 4).
+- [x] Migrar el modelo de `pieces` visto en el JSON embebido de `mockup.html` (date, platform, format, angle, copy, material, portada, estado, notas, publicado) a columnas de la tabla. Migración en `supabase/migrations/0001_init.sql`, aplicada al proyecto real vía SQL Editor.
+- [x] Script de seed (`scripts/seed.mjs`, `npm run seed`) que extrae las piezas del JSON embebido en `mockup.html` y las migra a la tabla `pieces` real, scoped a la marca Mastery Haus. Corrido y verificado: 36 piezas migradas correctamente (12 Instagram, 10 LinkedIn, 8 Facebook, 6 YouTube). Es idempotente — si ya hay datos para la marca, no vuelve a insertar.
+- [x] Constraints de `platform` y `estado` como CHECK (no enum de Postgres, para poder agregar valores con un ALTER TABLE simple en vez de ALTER TYPE). `format` queda como texto libre validado a nivel app (depende de la plataforma, según `PLATFORM_FORMATS` del mockup).
+- [x] RLS habilitado en ambas tablas: cualquier usuario autenticado puede leer marcas y gestionar piezas (sin scope por marca todavía — se ajusta si hace falta en Fase 3).
 
 ## Fase 2 — UI replicada (sin auth ni publicación real todavía)
 - [ ] Portar el CSS del mockup literal (custom properties, paleta de estados, dark mode automático) al sistema de estilos de Next.js.
@@ -55,6 +56,8 @@ Convención: `[ ]` pendiente, `[~]` en curso, `[x]` hecho.
 
 ## Estado actual (última sesión: 2026-08-31)
 
-Recién terminado: definición de alcance y decisiones de arquitectura (ver DECISIONS.md). Documentos de contexto creados. **Todavía no se escribió código de la app nueva** — el único artefacto existente es `mockup.html` (la referencia de diseño).
+Fase 1 completa. Proyecto de Supabase real conectado y con datos: `brands` (Mastery Haus, Sofia Contreras) y `pieces` con las 36 piezas reales migradas desde `mockup.html`, ya verificadas.
 
-**Próximo paso al retomar**: arrancar Fase 0 (scaffold de Next.js + proyecto de Supabase).
+Único pendiente de Fase 0: conectar el repo a Vercel — CLI instalada, falta que la usuaria corra `npx vercel login` desde su terminal (login interactivo) y avise para correr `vercel link`. No bloquea el resto del desarrollo local.
+
+**Próximo paso al retomar**: arrancar Fase 2 (UI replicada del mockup, conectada a la DB real vía API routes de Next.js, todavía sin auth).
