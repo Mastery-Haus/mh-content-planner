@@ -11,7 +11,8 @@ Convención: `[ ]` pendiente, `[~]` en curso, `[x]` hecho.
 - [x] Scaffold de Next.js 16 (App Router, TypeScript, sin Tailwind) + cliente de Supabase instalado (`@supabase/supabase-js`, `@supabase/ssr`).
 - [x] Crear proyecto en Supabase (Postgres + Auth + Storage). Credenciales cargadas en `.env.local` y verificadas (URL + anon key + service role key responden correctamente contra el proyecto real).
 - [x] Variables de entorno completas en `.env.local` (Supabase listo; `META_APP_ID`/`META_APP_SECRET` ya cargados también; `META_ACCESS_TOKEN` queda vacío hasta Fase 5 a propósito).
-- [ ] Conectar el repo a Vercel para deploy automático (ambiente de preview + producción). CLI de Vercel instalada (`vercel` como devDependency) — falta que la usuaria corra `npx vercel login` desde su terminal (login interactivo por navegador).
+- [x] Conectar el repo a Vercel: login hecho por la usuaria (`npx vercel login`), proyecto enlazado (`vercel link`) como `mastery-haus-projects/mh-content-planner`.
+- [ ] Cargar las variables de entorno (Supabase + Meta) en Vercel (Production/Preview/Development). El intento de hacerlo vía `vercel env add` automáticamente fue bloqueado por el modo auto de Claude Code (acción sensible sobre servicio externo) — pendiente hacerlo a mano desde el dashboard de Vercel (Settings → Environment Variables) o re-autorizar el comando explícitamente.
 
 ## Fase 1 — Modelo de datos ✅
 - [x] Diseñar esquema: `brands` (Mastery Haus, Sofia Contreras), `pieces` (con `brand_id` FK). `users` se maneja vía Supabase Auth nativo (`auth.users`), sin tabla propia — no hace falta con auth simple sin roles (Decisión 4).
