@@ -8,6 +8,12 @@
 // Las etiquetas en español (plataforma/formato/estado) se revierten a los códigos internos
 // usando PLATFORM_META/FORMAT_LABEL/STATUS_META de src/lib/pieces.ts — misma fuente de
 // verdad que usa la app, para no duplicar el mapeo a mano.
+//
+// Idempotente por defecto (Decisión 14): antes de insertar, trae las piezas ya cargadas
+// para esa marca y salta cualquier fila del CSV que coincida en fecha+plataforma+ángulo
+// (normalizando espacios) — así correr este script de nuevo sobre un export más nuevo del
+// mismo Artifact (que sigue teniendo todo el contenido viejo) solo agrega lo genuinamente
+// nuevo, sin duplicar lo que ya está.
 
 import { readFileSync } from "node:fs";
 import { PLATFORM_META, FORMAT_LABEL, STATUS_META } from "../src/lib/pieces.ts";
@@ -70,6 +76,10 @@ function parseCsv(text) {
   return rows;
 }
 
+function normKey(date, platform, angle) {
+  return `${date}|${platform}|${(angle || "").trim().toLowerCase().replace(/\s+/g, " ")}`;
+}
+
 function invert(labelMap) {
   const out = {};
   for (const [key, meta] of Object.entries(labelMap)) {
@@ -118,7 +128,11 @@ async function main() {
   if (!brands.length) throw new Error(`No se encontró la marca "${brandSlug}"`);
   const brandId = brands[0].id;
 
+  const existingRows = await sb(`/pieces?brand_id=eq.${brandId}&select=date,platform,angle`);
+  const existingKeys = new Set(existingRows.map((p) => normKey(p.date, p.platform, p.angle)));
+
   const pieces = [];
+  const skipped = [];
   const errors = [];
   dataRows.forEach((cols, i) => {
     const [fecha, plataformaLabel, formatoLabel, angulo, copy, material, portada, estadoLabel, notas, publicado] = cols;
@@ -132,6 +146,12 @@ async function main() {
       errors.push(`Fila ${i + 2}: estado desconocido "${estadoLabel}"`);
       return;
     }
+    const angleTrimmed = (angulo || "").trim();
+    if (existingKeys.has(normKey(fecha, platform, angleTrimmed))) {
+      skipped.push(`${fecha} | ${plataformaLabel} | ${angleTrimmed}`);
+      return;
+    }
+
     // Formato: si la etiqueta matchea un formato fijo conocido, se revierte al código
     // interno; si no (campos libres, ej. campañas de Email Marketing), se deja tal cual.
     const format = formatByLabel[formatoLabel] ?? (formatoLabel || "").trim();
@@ -140,7 +160,7 @@ async function main() {
       date: fecha,
       platform,
       format,
-      angle: (angulo || "").trim(),
+      angle: angleTrimmed,
       copy: copy || "",
       material: (material || "").trim(),
       portada: (portada || "").trim(),
@@ -156,10 +176,14 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`${pieces.length} piezas listas para insertar en la marca "${brandSlug}" (${brandId}).`);
+  console.log(`Filas del CSV: ${dataRows.length}. Ya existentes (salteadas): ${skipped.length}. Nuevas a insertar: ${pieces.length}.`);
+  if (pieces.length === 0) {
+    console.log("Nada nuevo para importar.");
+    return;
+  }
   if (dryRun) {
-    console.log("--dry-run: no se insertó nada. Muestra de las primeras 3 piezas mapeadas:");
-    console.log(JSON.stringify(pieces.slice(0, 3), null, 2));
+    console.log("--dry-run: no se insertó nada. Piezas nuevas que se insertarían:");
+    console.log(JSON.stringify(pieces, null, 2));
     return;
   }
   const inserted = await sb("/pieces", { method: "POST", body: JSON.stringify(pieces) });

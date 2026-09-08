@@ -202,6 +202,18 @@ Registro de decisiones de arquitectura/producto, en orden cronológico. Cada ent
 
 ---
 
+## 2026-09-08 — Decisión 14: `import-csv.mjs` idempotente (sync incremental)
+
+**Contexto**: el jefe sigue usando su Artifact activamente y agregando contenido ahí (no migró a esta app todavía). Unas horas después de la Decisión 12, la usuaria bajó un export nuevo (148 filas vs las 145 originales) para traer lo que se agregó desde entonces. Correr `import-csv.mjs` tal cual estaba (Decisión 12) habría vuelto a insertar las 142 filas que ya estaban, duplicándolas — exactamente el problema que causó la Decisión 12 en primer lugar.
+
+**Decisión**: `import-csv.mjs` ahora es idempotente por defecto — antes de armar las piezas a insertar, trae las ya cargadas para esa marca (`GET /pieces?brand_id=eq...&select=date,platform,angle`) y arma un set de claves normalizadas (fecha+plataforma+ángulo, espacios colapsados, minúsculas). Cualquier fila del CSV cuya clave ya exista se saltea. No se agregó un flag para desactivar esto — no hay ningún caso de uso real donde reinsertar filas ya existentes sea lo que se quiera.
+
+**Hallazgo durante el diff**: 3 piezas de email del 07/09 (`Email 11/12/13`) que sí estaban en el import original de la Decisión 12 ya no estaban en la base al momento de este segundo import — 145 esperadas, pero el diff solo encontró 142 coincidencias. No se identificó la causa exacta (lo más probable es un borrado accidental navegando la app en vivo durante esta misma sesión, dado que la usuaria estuvo interactuando activamente con Agenda/Lista mientras se probaba la Decisión 13) — como de cualquier forma esas piezas tenían que volver a estar (el jefe las sigue teniendo en su Artifact), el fix es el mismo sync incremental, sin necesidad de diagnosticar más a fondo el borrado.
+
+**Resultado**: de las 148 filas del nuevo export, 142 ya existían (salteadas) y 6 eran genuinamente nuevas — las 3 de email del 07/09 más 3 piezas nuevas ("Libros recomendados", 09/09, Facebook/LinkedIn/YouTube). Sofia Contreras quedó en 148 piezas, coincidiendo exactamente con el total del CSV — confirmado por API antes y después.
+
+---
+
 ## 2026-09-08 — Decisión 12: migración del contenido que el jefe acumuló en su Artifact (Sofia Contreras)
 
 **Contexto**: mientras se construía esta app, el jefe de la usuaria seguía usando directo el Artifact original de `mockup.html` (no la app nueva) para cargar contenido real día a día. Había acumulado así 145 piezas reales (28 de agosto al 9 de septiembre) que había que migrar a la base real antes de que él pudiera pasarse a usar esta app.
