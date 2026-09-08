@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { useArmedDelete } from "./useArmedDelete";
+import { decodeTextFile } from "@/lib/decode-text-file";
 import {
   FORMAT_LABEL,
   FREEFORM_META,
@@ -83,6 +84,23 @@ export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete,
       await onCreateGhlTemplate(piece.id);
     } finally {
       setCreatingGhl(false);
+    }
+  }
+
+  // Carga de copy desde un .md (mismo archivo que hoy se abre y se pega a mano desde el
+  // Proyecto de Claude/Drive) — ver Decisión 9 en DECISIONS.md.
+  const mdFileInputRef = useRef<HTMLInputElement>(null);
+  const [loadingMd, setLoadingMd] = useState(false);
+  async function handleMdFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite volver a elegir el mismo archivo si hace falta recargar
+    if (!file) return;
+    setLoadingMd(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      onFieldChange(piece.id, { copy: decodeTextFile(buffer) });
+    } finally {
+      setLoadingMd(false);
     }
   }
 
@@ -225,17 +243,39 @@ export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete,
         </div>
 
         <div className="field">
-          <label>
-            Copy
+          <div className="field-label-row">
+            <label>
+              Copy
+              {isEmail && (
+                <span
+                  className="info-hint"
+                  title="Escribí {{contact.first_name}} donde quieras el nombre del contacto, y una línea con {{cta}} sola donde quieras que aparezca el botón. Podés usar **negrita**, *itálica* y [links](url) — se convierten al mail real."
+                >
+                  ⓘ
+                </span>
+              )}
+            </label>
             {isEmail && (
-              <span
-                className="info-hint"
-                title="Escribí {{contact.first_name}} donde quieras el nombre del contacto, y una línea con {{cta}} sola donde quieras que aparezca el botón."
-              >
-                ⓘ
-              </span>
+              <>
+                <input
+                  ref={mdFileInputRef}
+                  type="file"
+                  accept=".md,text/markdown,text/plain"
+                  style={{ display: "none" }}
+                  onChange={handleMdFile}
+                />
+                <button
+                  type="button"
+                  className="btn subtle btn-sm"
+                  disabled={loadingMd}
+                  onClick={() => mdFileInputRef.current?.click()}
+                >
+                  <Icon name="i-upload" />
+                  {loadingMd ? "Cargando…" : "Cargar desde .md"}
+                </button>
+              </>
             )}
-          </label>
+          </div>
           <textarea value={piece.copy} onChange={(e) => onFieldChange(piece.id, { copy: e.target.value })} />
         </div>
 

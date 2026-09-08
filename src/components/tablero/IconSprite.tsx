@@ -144,6 +144,17 @@ export default function IconSprite() {
           />
           <path d="M4 18h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24">
+          <path
+            d="M12 15V4M7 9l5-5 5 5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path d="M4 18h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </symbol>
         <symbol id="i-trash" viewBox="0 0 24 24">
           <path
             d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13"

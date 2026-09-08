@@ -827,6 +827,20 @@ details.piece > summary:focus-visible {
   color: var(--ink-faint);
   text-transform: uppercase;
 }
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.btn.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.btn-sm svg {
+  width: 12px;
+  height: 12px;
+}
 .info-hint {
   display: inline-block;
   margin-left: 5px;
