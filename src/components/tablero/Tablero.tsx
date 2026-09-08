@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import AgendaView from "./AgendaView";
@@ -520,6 +521,10 @@ export default function Tablero({ brands, currentBrandSlug, initialPieces, serve
           />
         )}
       </main>
+
+      <footer className="app-footer">
+        <Link href="/ayuda">Cómo funciona el Tablero</Link>
+      </footer>
 
       <button className="fab" aria-label="Nueva pieza" onClick={() => setModalOpen(true)}>
         <Icon name="i-plus" />

@@ -139,6 +139,14 @@ Ver Decisión 10 en DECISIONS.md.
 - [x] `api/pieces/[id]/ghl-template` usa `email_html_override` si tiene contenido, si no regenera desde copy/material/cta_label como antes.
 - [x] Verificado en navegador real (Playwright + Chrome del sistema) contra una pieza de prueba creada y borrada exclusivamente para el test, localizada por un ángulo único (no "la primera pieza de la lista" — lección de la vez anterior): vista previa muestra el markdown ya convertido a HTML, edición manual se guarda (PATCH 200), nota de "editado a mano" aparece y desaparece correctamente al resetear. `npm run build` limpio.
 
+## Documentación — SOP interno (`/ayuda`) ✅ (2026-09-08)
+Ver Decisión 15 en DECISIONS.md.
+- [x] Se armó primero como Artifact externo (link compartible) y después se decidió pasarlo a una página propia dentro de la app (`src/app/ayuda/page.tsx`, detrás del login como el resto de la app) para que se mantenga sola al día con la app en vez de vivir aparte.
+- [x] El glosario de estados y la lista de plataformas se arman leyendo `STATUS_META`/`PLATFORM_META` de `src/lib/pieces.ts` — la misma fuente que usa el resto de la UI, así no se desincroniza si un estado o una plataforma cambia.
+- [x] Corrección real detectada al escribir esta página: el estado `error` de una pieza se muestra en la UI como **"Demorado"** (contenido trabado, falta algo para avanzarlo) — no es un error de guardado. El Artifact original tenía este punto mal explicado; se corrigió ahí también.
+- [x] Link "Cómo funciona el Tablero" agregado al footer del Tablero (`Tablero.tsx`), apunta a `/ayuda`.
+- [x] Verificado en navegador real (Playwright + Chrome del sistema, usuario de prueba creado y borrado por API): `/ayuda` sin sesión redirige a `/login` igual que el resto de la app; con sesión se ve completa en tema claro y oscuro; el link del footer apunta bien. `npm run build` limpio.
+
 ## Fase 6 — Pulido y salida a producción
 - [ ] QA visual comparando contra `mockup.html` (pixel a pixel, ambos temas claro/oscuro).
 - [ ] Probar el flujo completo con datos reales de ambas marcas.
@@ -168,6 +176,8 @@ Misma sesión, a pedido de la usuaria: se agregó carga de copy desde archivo `.
 Misma sesión, tercer pedido de la usuaria: vista previa del mail + edición manual del HTML con override persistente — ver Fase 5B (segunda extensión) arriba y Decisión 10 en DECISIONS.md. Verificado en navegador contra una pieza de prueba dedicada (creada y borrada por API, nunca "la primera pieza visible" — aplicando la lección del incidente anterior). Ambas extensiones de Fase 5B ya committeadas y pusheadas a `main` (commits `9eb897b` y `aafa25a`), deployando a producción vía Vercel.
 
 Para cerrar la sesión se conversó sobre alternativas a Meta para seguir sumando publicación real dado el bloqueo de permisos — se descartó Zapier y n8n como atajo para Meta específicamente (ambos terminan necesitando la misma app propia de Meta con los mismos permisos de Business Manager; n8n llamaría a la Graph API cruda igual que haríamos nosotros). La usuaria decidió el orden: **YouTube primero, después LinkedIn, recién después se retoma Meta** — ver Decisión 11 en DECISIONS.md (con las fases 5C y 5D nuevas arriba, todavía sin arrancar). La usuaria mencionó que ya tiene n8n disponible — no se decidió usarlo todavía, queda como opción a evaluar más adelante (ver Decisión 11).
+
+**Misma sesión (2026-09-08), pedido nuevo de la usuaria**: se armó un SOP ("Cómo funciona el Tablero") pensado para que cualquiera del equipo lo entienda sin conocimiento técnico — para quién es, qué hace hoy, cómo usarlo paso a paso, glosario de estados y cuidados básicos. Se hizo primero como Artifact externo compartible y, a pedido explícito de la usuaria, se pasó a una página propia dentro de la app (`/ayuda`, protegida por el login, con link en el footer del Tablero) para que se mantenga sola al día — ver Decisión 15 en DECISIONS.md y la sección "Documentación — SOP interno" arriba. De paso se detectó y corrigió una confusión real: el estado `error` de una pieza se muestra como "Demorado" (contenido trabado), no como un error de guardado.
 
 **Próximo paso al retomar**: sin bloqueantes propios. Opciones abiertas, ninguna urgente:
 - **Prioridad acordada con la usuaria**: arrancar Fase 5C (YouTube) — ver checklist arriba, empieza por confirmar alcance (¿solo Shorts?) y credenciales de Google Cloud/YouTube Data API v3.
