@@ -83,6 +83,17 @@ Ver Decisión 12 en DECISIONS.md.
 - [x] El CSV con contenido real no se versiona (repo público) — se agregó `*.csv` a `.gitignore` y se borró el archivo local tras importar.
 - **Pendiente de la usuaria/su jefe**: 122 de las 145 piezas marcadas "Publicado" no tienen el link real en "Link publicado" — quedaron así importadas tal cual, se pueden completar después desde la UI. También hay 3 piezas de Email Marketing con formato "Venga GTA" que parece un typo de "Venta GTA" (20 piezas) — se importaron tal cual, sin corregir, a la espera de que confirmen si es lo mismo.
 - **Pendiente**: que el jefe empiece a usar esta app en vez de su Artifact — todavía no confirmado que haya hecho el cambio.
+- [x] **Hallazgo real post-import**: las 36 piezas originales de Mastery Haus (migradas en Fase 1, documentadas como "datos de ejemplo/mock") en realidad eran contenido real de Sofia Contreras mal escopeado (antes de que existiera el selector de marca) — y el jefe nunca las borró de su Artifact, así que volvieron a aparecer en el CSV de hoy y quedaron duplicadas. Se detectaron por comparación exacta (fecha+plataforma+ángulo, normalizando espacios) y se borraron las 36 duplicadas de Mastery Haus — quedan solo en Sofia Contreras, que es donde corresponden. Mastery Haus quedó con sus 2 piezas reales de email. Ver Decisión 12.
+
+## Fase 3C — Vista "Todas las marcas" ✅ (2026-09-08)
+Ver Decisión 13 en DECISIONS.md.
+- [x] Selector de marca suma una opción "Todas las marcas" (`ALL_BRANDS_SLUG = "all"` en `src/lib/pieces.ts`) que trae piezas de ambas marcas sin filtrar por `brand_id`.
+- [x] `PIECE_COLUMNS` ahora incluye `brand_id` (de solo lectura — no se agregó a `EDITABLE_FIELDS`, no se puede "mover" una pieza de marca vía PATCH).
+- [x] Agenda y Lista muestran un tag/columna "Marca" por pieza solo en esta vista combinada.
+- [x] "Nueva pieza" ahora siempre tiene un selector de Marca explícito (antes se asumía implícito de la marca activa) — necesario porque en "Todas las marcas" no hay una marca "actual" de la que partir.
+- [x] Duplicar una pieza manda `brand_id` directo (no `brand_slug`) — el duplicado va siempre a la misma marca que el original, sin depender de la marca activa.
+- [x] El alta rápida "+ Agregar pieza a este día" de Agenda se oculta en esta vista (reemplazado por un hint que apunta a "Nueva pieza") — no hay forma de inferir la marca para un alta con un solo click ahí.
+- [x] Verificado en navegador real: conteo combinado (147 = 2 + 145), tags de marca visibles en Agenda y Lista, alta de pieza nueva eligiendo marca desde el modal (verificado el `brand_id` resultante), duplicar una pieza real preserva su marca original — todo contra piezas de prueba creadas y borradas por id exacto. `npm run build` limpio.
 
 ## Fase 5C — Publicación real a YouTube (siguiente prioridad, no arrancada)
 - [ ] Definir alcance exacto (¿solo Shorts? ¿video largo también?) y confirmar credenciales: proyecto en Google Cloud Console + OAuth consent screen + credenciales de YouTube Data API v3.

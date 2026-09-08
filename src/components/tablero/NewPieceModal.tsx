@@ -12,18 +12,25 @@ import {
 } from "@/lib/pieces";
 
 interface Props {
+  brands: { slug: string; name: string }[];
+  defaultBrandSlug: string;
   onClose: () => void;
-  onSubmit: (date: string, platform: Platform, format: string, angle: string) => void;
+  onSubmit: (date: string, platform: Platform, format: string, angle: string, brandSlug: string) => void;
 }
 
 // Se monta/desmonta desde el padre según el estado de apertura del modal — así cada
 // apertura es un mount fresco y los campos arrancan con sus valores por defecto sin
 // necesitar un efecto que los resetee.
-export default function NewPieceModal({ onClose, onSubmit }: Props) {
+export default function NewPieceModal({ brands, defaultBrandSlug, onClose, onSubmit }: Props) {
   const [date, setDate] = useState(() => toDateInputValue(new Date()));
   const [platform, setPlatform] = useState<Platform>("instagram");
   const [format, setFormat] = useState(() => formatsFor("instagram")[0]);
   const [angle, setAngle] = useState("");
+  // defaultBrandSlug puede ser "all" (vista "Todas las marcas", sin marca real) — en ese
+  // caso no hay una marca "actual" de la que partir, así que arranca en la primera real.
+  const [brandSlug, setBrandSlug] = useState(
+    () => brands.find((b) => b.slug === defaultBrandSlug)?.slug ?? brands[0]?.slug ?? ""
+  );
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -39,8 +46,8 @@ export default function NewPieceModal({ onClose, onSubmit }: Props) {
   }
 
   function handleSubmit() {
-    if (!date) return;
-    onSubmit(date, platform, format, angle.trim());
+    if (!date || !brandSlug) return;
+    onSubmit(date, platform, format, angle.trim(), brandSlug);
   }
 
   return (
@@ -52,6 +59,16 @@ export default function NewPieceModal({ onClose, onSubmit }: Props) {
     >
       <div className="modal">
         <h2>Nueva pieza</h2>
+        <div className="field">
+          <label>Marca</label>
+          <select value={brandSlug} onChange={(e) => setBrandSlug(e.target.value)}>
+            {brands.map((b) => (
+              <option value={b.slug} key={b.slug}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="field">
           <label>Fecha</label>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} autoFocus />

@@ -10,6 +10,7 @@ import NewPieceModal from "./NewPieceModal";
 import StatsStrip from "./StatsStrip";
 import Toast, { type ToastMessage } from "./Toast";
 import {
+  ALL_BRANDS_SLUG,
   ESTADOS,
   FORMAT_LABEL,
   MO_FULL,
@@ -25,7 +26,7 @@ import {
 } from "@/lib/pieces";
 
 interface Props {
-  brands: { slug: string; name: string }[];
+  brands: { id: string; slug: string; name: string }[];
   currentBrandSlug: string;
   initialPieces: Piece[];
   // "Hoy" calculado en el servidor al momento del render (string YYYY-MM-DD). Sirve como
@@ -124,6 +125,13 @@ export default function Tablero({ brands, currentBrandSlug, initialPieces, serve
     setSaveState("saved");
     setSaveMessage("Guardado");
   }
+
+  // Solo se usa en la vista "Todas las marcas" (Decisión 13), para poder mostrar de qué
+  // marca es cada pieza — en cualquier otra vista se pasa `null` y no se muestra nada.
+  const brandNameById = useMemo(() => {
+    if (currentBrandSlug !== ALL_BRANDS_SLUG) return null;
+    return Object.fromEntries(brands.map((b) => [b.id, b.name]));
+  }, [brands, currentBrandSlug]);
 
   const monthPieces = useMemo(() => {
     const mk = currentMonth.y + "-" + pad2(currentMonth.m);
@@ -259,12 +267,12 @@ export default function Tablero({ brands, currentBrandSlug, initialPieces, serve
     ids.forEach((id) => flushPiece(id));
   }
 
-  async function addPiece(date: string, platform: Platform, format: string, angle: string) {
+  async function addPiece(date: string, platform: Platform, format: string, angle: string, brandSlug: string) {
     try {
       const res = await fetch("/api/pieces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, platform, format, angle, brand_slug: currentBrandSlug }),
+        body: JSON.stringify({ date, platform, format, angle, brand_slug: brandSlug }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -309,7 +317,10 @@ export default function Tablero({ brands, currentBrandSlug, initialPieces, serve
           portada: source.portada,
           notas: source.notas,
           cta_label: source.cta_label,
-          brand_slug: currentBrandSlug,
+          // brand_id directo (no brand_slug): duplicar siempre va a la misma marca que
+          // el original, sin depender de cuál sea "la marca actual" — importa en la
+          // vista "Todas las marcas", donde eso es ambiguo. Ver Decisión 13.
+          brand_id: source.brand_id,
         }),
       });
       if (!res.ok) throw new Error("No se pudo duplicar la pieza");
@@ -340,7 +351,11 @@ export default function Tablero({ brands, currentBrandSlug, initialPieces, serve
   }
 
   function handleAddToDay(date: string) {
-    addPiece(date, "instagram", "REEL", "");
+    // En la vista "Todas las marcas" no hay una marca "actual" de la que partir — el
+    // botón de alta rápida por día queda oculto ahí (ver AgendaView), esto es solo
+    // defensivo por si se llegara a invocar igual.
+    if (currentBrandSlug === ALL_BRANDS_SLUG) return;
+    addPiece(date, "instagram", "REEL", "", currentBrandSlug);
   }
 
   function goPrevMonth() {
@@ -416,6 +431,7 @@ export default function Tablero({ brands, currentBrandSlug, initialPieces, serve
                 {b.name}
               </option>
             ))}
+            <option value={ALL_BRANDS_SLUG}>Todas las marcas</option>
           </select>
           <h1>Tablero de Salida</h1>
           <div className="save-status" data-state={saveState}>
@@ -481,6 +497,7 @@ export default function Tablero({ brands, currentBrandSlug, initialPieces, serve
             onOpenModal={() => setModalOpen(true)}
             onCreateGhlTemplate={createGhlTemplate}
             onSavePiece={savePieceNow}
+            brandNameById={brandNameById}
           />
         ) : (
           <ListaView
@@ -499,6 +516,7 @@ export default function Tablero({ brands, currentBrandSlug, initialPieces, serve
             onTogglePlatform={toggleListaPlatform}
             estados={listaEstados}
             onToggleEstado={toggleListaEstado}
+            brandNameById={brandNameById}
           />
         )}
       </main>
@@ -509,9 +527,11 @@ export default function Tablero({ brands, currentBrandSlug, initialPieces, serve
 
       {modalOpen && (
         <NewPieceModal
+          brands={brands}
+          defaultBrandSlug={currentBrandSlug}
           onClose={() => setModalOpen(false)}
-          onSubmit={(date, platform, format, angle) => {
-            addPiece(date, platform, format, angle);
+          onSubmit={(date, platform, format, angle, brandSlug) => {
+            addPiece(date, platform, format, angle, brandSlug);
             setModalOpen(false);
           }}
         />

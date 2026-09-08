@@ -39,6 +39,8 @@ interface Props {
   onTogglePlatform: (p: Platform) => void;
   estados: Set<Estado>;
   onToggleEstado: (e: Estado) => void;
+  // Solo con valor en la vista "Todas las marcas" (Decisión 13) — agrega la columna Marca.
+  brandNameById: Record<string, string> | null;
 }
 
 function DeleteCell({ id, onDelete }: { id: string; onDelete: (id: string) => void }) {
@@ -66,6 +68,7 @@ export default function ListaView({
   onTogglePlatform,
   estados,
   onToggleEstado,
+  brandNameById,
 }: Props) {
   if (!pieces.length) {
     return (
@@ -158,6 +161,7 @@ export default function ListaView({
             <thead>
               <tr>
                 <th>Fecha</th>
+                {brandNameById && <th>Marca</th>}
                 <th>Plataforma</th>
                 <th>Ángulo</th>
                 <th>Estado</th>
@@ -177,6 +181,7 @@ export default function ListaView({
                     <td className="tnum">
                       {WD[d.getDay()]} {pad2(d.getDate())}/{pad2(d.getMonth() + 1)}
                     </td>
+                    {brandNameById && <td>{brandNameById[p.brand_id] ?? "—"}</td>}
                     <td>
                       <div className="cell-platform-stack">
                         <span className="cell-platform">

@@ -26,6 +26,8 @@ interface Props {
   onDuplicate: (id: string) => void;
   onCreateGhlTemplate: (id: string) => Promise<void>;
   onSavePiece: (id: string) => Promise<boolean>;
+  // Solo llega con valor en la vista "Todas las marcas" (Decisión 13).
+  brandName?: string;
 }
 
 function LinkField({
@@ -59,7 +61,7 @@ function LinkField({
   );
 }
 
-export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete, onDuplicate, onCreateGhlTemplate, onSavePiece }: Props) {
+export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete, onDuplicate, onCreateGhlTemplate, onSavePiece, brandName }: Props) {
   const { armed, handleClick: handleDeleteClick } = useArmedDelete(() => onDelete(piece.id));
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
@@ -151,6 +153,7 @@ export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete,
           <Icon name={pf.icon} className="picon" />
           {pf.label}
         </span>
+        {brandName && <span className="brand-tag">{brandName}</span>}
         <span className="p-format">{FORMAT_LABEL[piece.format] || piece.format}</span>
         <span className={"angle" + (piece.angle ? "" : " empty")}>{piece.angle || "Sin ángulo cargado"}</span>
         <span className={"pill " + st.cls}>{st.label}</span>

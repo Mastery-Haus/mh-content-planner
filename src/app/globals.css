@@ -650,6 +650,15 @@ details.piece > summary:focus-visible {
   min-width: 68px;
   flex: 0 0 auto;
 }
+.brand-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  flex: 0 0 auto;
+}
 
 .angle {
   flex: 1;
@@ -936,6 +945,10 @@ details.piece > summary:focus-visible {
 
 .add-piece-row {
   padding: 10px 20px 16px;
+}
+.add-piece-hint {
+  font-size: 12.5px;
+  color: var(--ink-faint);
 }
 .add-piece-row button {
   all: unset;

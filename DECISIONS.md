@@ -184,6 +184,24 @@ Registro de decisiones de arquitectura/producto, en orden cronológico. Cada ent
 
 ---
 
+## 2026-09-08 — Decisión 13: vista "Todas las marcas"
+
+**Contexto**: tras importar el contenido de Sofia Contreras (Decisión 12) y corregir los duplicados, la usuaria pidió simplificar la experiencia: mientras Mastery Haus tenga poco contenido propio, no quiere tener que elegir marca para ver todo junto.
+
+**Alternativas consideradas**: (a) sacar el filtro de marca por completo, (b) agregar una opción "Todas las marcas" al selector existente, manteniendo la posibilidad de ver una marca sola. Se eligió **(b)**, confirmado con la usuaria — no se pierde la capacidad de aislar una marca cuando haga falta (Decisión 3 del kickoff sigue vigente: las cuentas se apalancan mutuamente pero también puede convenir mirarlas por separado).
+
+**Decisión — diseño**:
+- `ALL_BRANDS_SLUG = "all"` (en `src/lib/pieces.ts`) es un valor especial de `?brand=`, no un slug real de la tabla `brands`. `page.tsx` y `GET /api/pieces` lo interpretan como "sin filtro de `brand_id`" en vez de resolverlo contra la tabla.
+- `PIECE_COLUMNS` ahora incluye `brand_id` — de solo lectura (no se agregó a `EDITABLE_FIELDS`): mover una pieza de marca no es una operación soportada vía el PATCH genérico, sería un cambio de alcance mayor no pedido.
+- Agenda y Lista muestran un tag/columna "Marca" por pieza, pero **solo** cuando la vista activa es "Todas las marcas" (un `brandNameById: Record<string,string> | null` que viaja `null` en cualquier otra vista, así el resto de los casos no cambia en nada).
+- **"Nueva pieza" pasa a tener siempre un selector de Marca explícito** (antes se asumía implícitamente de la marca activa vía `brand_slug` en la URL) — es el único cambio que afecta también a las vistas de una sola marca, porque en "Todas las marcas" no hay ninguna marca "actual" de la que inferirlo. Por consistencia se dejó siempre visible, en vez de mostrarlo condicionalmente solo en esa vista.
+- **Duplicar una pieza** manda `brand_id` directo en vez de `brand_slug` — el duplicado va siempre a la misma marca que el original, sin depender de cuál sea la marca activa (antes esto coincidía siempre porque solo existía la vista de una marca a la vez; en "Todas las marcas" sería ambiguo).
+- **El alta rápida "+ Agregar pieza a este día" de Agenda se oculta** en la vista "Todas las marcas" (reemplazada por un texto que apunta a "Nueva pieza") — no hay forma de inferir una marca para un alta de un solo click ahí, y agregar un selector de marca a ese flujo rápido le quitaba el sentido de ser "rápido".
+
+**Verificación**: recorrido con Playwright + Chrome del sistema contra la app real — conteo combinado correcto (147 = 2 de Mastery Haus + 145 de Sofia Contreras), columna/tag de marca visible en Agenda y Lista, alta rápida por día efectivamente oculta (reemplazada por el hint), creación de una pieza nueva eligiendo marca desde el modal (confirmado el `brand_id` resultante contra la DB), y duplicar una pieza real preservando su marca original — todo contra piezas creadas puntualmente para la prueba y borradas por id exacto después (nunca "la primera pieza visible", siguiendo la lección de las Decisiones 9 y 10). `npm run build` limpio.
+
+---
+
 ## 2026-09-08 — Decisión 12: migración del contenido que el jefe acumuló en su Artifact (Sofia Contreras)
 
 **Contexto**: mientras se construía esta app, el jefe de la usuaria seguía usando directo el Artifact original de `mockup.html` (no la app nueva) para cargar contenido real día a día. Había acumulado así 145 piezas reales (28 de agosto al 9 de septiembre) que había que migrar a la base real antes de que él pudiera pasarse a usar esta app.
@@ -201,3 +219,5 @@ Registro de decisiones de arquitectura/producto, en orden cronológico. Cada ent
 **Resultado**: 145 piezas insertadas, verificadas contra la DB real (conteo total y distribución por plataforma/estado coinciden exactamente con lo calculado del CSV antes de insertar). Dos observaciones de calidad de datos que se importaron tal cual (no se "corrigieron" sin confirmar con la usuaria): 122 de 123 piezas marcadas "Publicado" no tienen el link real cargado en "Link publicado", y 3 piezas de Email Marketing tienen el formato "Venga GTA" que probablemente sea un typo de "Venta GTA" (20 piezas) — pendiente de confirmar.
 
 **El CSV no se versiona**: el repo es público (`github.com/Mastery-Haus/mh-content-planner`) y el archivo contiene copy real de marketing — se agregó `*.csv` a `.gitignore` y se borró el archivo local una vez confirmado el import. El script `scripts/import-csv.mjs` sí quedó commiteado (reutilizable para futuros imports, sin datos reales adentro).
+
+**Corrección post-import (mismo día, importante)**: la usuaria reportó, mirando la app en producción, que el contenido de Mastery Haus se veía raro (38 piezas con ángulos tipo "Ladrón #5/#6/#7..."). Se investigó y se confirmó algo que la documentación original de Fase 1 tenía mal: las 36 piezas migradas en esa fase (descriptas como "datos de ejemplo/mock" del `mockup.html`) **eran en realidad contenido real de Sofia Contreras**, cargado bajo Mastery Haus porque en ese momento no existía todavía el selector de marca — no eran datos de ejemplo genéricos. Como el jefe nunca borró ese contenido de su Artifact, seguía ahí y volvió a aparecer en el CSV exportado hoy, generando 36 duplicados exactos (fecha+plataforma+ángulo, normalizando espacios) entre Mastery Haus y Sofia Contreras. Se confirmaron los duplicados con una comparación programática y se borraron las 36 filas de Mastery Haus (conservando las de Sofia Contreras, recién importadas) — Mastery Haus quedó con sus 2 piezas reales de email (Decisión 8/9), sin nada más.

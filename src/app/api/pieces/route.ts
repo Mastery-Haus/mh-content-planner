@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PIECE_COLUMNS, resolveBrandId, supabaseAdmin } from "@/lib/supabase-admin";
 import { requireUser } from "@/lib/supabase/server";
-import { EDITABLE_FIELDS, ESTADOS, PLATFORMS } from "@/lib/pieces";
+import { ALL_BRANDS_SLUG, EDITABLE_FIELDS, ESTADOS, PLATFORMS } from "@/lib/pieces";
 
 export async function GET(request: NextRequest) {
   const user = await requireUser();
@@ -9,13 +9,13 @@ export async function GET(request: NextRequest) {
 
   try {
     const brandSlug = request.nextUrl.searchParams.get("brand_slug") ?? undefined;
-    const brandId = await resolveBrandId(brandSlug);
-    const { data, error } = await supabaseAdmin
-      .from("pieces")
-      .select(PIECE_COLUMNS)
-      .eq("brand_id", brandId)
-      .order("date", { ascending: true })
-      .order("created_at", { ascending: true });
+    let query = supabaseAdmin.from("pieces").select(PIECE_COLUMNS);
+    // "Todas las marcas" (Decisión 13): sin filtro de brand_id.
+    if (brandSlug !== ALL_BRANDS_SLUG) {
+      const brandId = await resolveBrandId(brandSlug);
+      query = query.eq("brand_id", brandId);
+    }
+    const { data, error } = await query.order("date", { ascending: true }).order("created_at", { ascending: true });
     if (error) throw error;
     return NextResponse.json({ pieces: data ?? [] });
   } catch (err) {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { date, platform, brand_slug } = body;
+    const { date, platform, brand_slug, brand_id } = body;
     if (!date || !platform) {
       return NextResponse.json({ error: "Faltan date/platform" }, { status: 400 });
     }
@@ -46,7 +46,10 @@ export async function POST(request: NextRequest) {
       if (key in body) row[key] = body[key];
     }
 
-    const brandId = await resolveBrandId(brand_slug);
+    // Duplicar una pieza (Decisión 13) manda brand_id directo — la nueva pieza va a la
+    // misma marca que el original, sin pasar por un slug (útil en la vista "todas las
+    // marcas", donde no hay una sola marca "actual" de la que inferirlo).
+    const brandId = brand_id ? brand_id : await resolveBrandId(brand_slug);
     const { data, error } = await supabaseAdmin
       .from("pieces")
       .insert({ brand_id: brandId, ...row })

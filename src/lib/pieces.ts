@@ -14,8 +14,13 @@ export type Platform =
 
 export type Estado = "pendiente" | "produccion" | "listo" | "publicado" | "error";
 
+// Valor especial de "marca" para la vista combinada (Decisión 13) — no es un slug real de
+// la tabla brands, así que nunca se manda como brand_slug real a resolveBrandId().
+export const ALL_BRANDS_SLUG = "all";
+
 export interface Piece {
   id: string;
+  brand_id: string;
   date: string; // YYYY-MM-DD
   platform: Platform;
   format: string;

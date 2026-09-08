@@ -16,6 +16,9 @@ interface Props {
   onOpenModal: () => void;
   onCreateGhlTemplate: (id: string) => Promise<void>;
   onSavePiece: (id: string) => Promise<boolean>;
+  // Solo en la vista "Todas las marcas" (Decisión 13) — mapa brand_id -> nombre, para
+  // taggear de qué marca es cada pieza. `null` en cualquier otra vista.
+  brandNameById: Record<string, string> | null;
 }
 
 function DayCard({
@@ -29,7 +32,10 @@ function DayCard({
   dayPieces: Piece[];
   isToday: boolean;
   forceOpen: boolean;
-} & Pick<Props, "forceOpenId" | "onFieldChange" | "onDelete" | "onDuplicate" | "onAddToDay" | "onCreateGhlTemplate" | "onSavePiece">) {
+} & Pick<
+  Props,
+  "forceOpenId" | "onFieldChange" | "onDelete" | "onDuplicate" | "onAddToDay" | "onCreateGhlTemplate" | "onSavePiece" | "brandNameById"
+>) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
@@ -88,11 +94,16 @@ function DayCard({
             onDuplicate={rest.onDuplicate}
             onCreateGhlTemplate={rest.onCreateGhlTemplate}
             onSavePiece={rest.onSavePiece}
+            brandName={rest.brandNameById?.[p.brand_id]}
           />
         ))}
       </div>
       <div className="add-piece-row">
-        <button onClick={() => rest.onAddToDay(date)}>+ Agregar pieza a este día</button>
+        {rest.brandNameById ? (
+          <span className="add-piece-hint">Usá &quot;Nueva pieza&quot; arriba para elegir la marca.</span>
+        ) : (
+          <button onClick={() => rest.onAddToDay(date)}>+ Agregar pieza a este día</button>
+        )}
       </div>
     </details>
   );
@@ -109,6 +120,7 @@ export default function AgendaView({
   onOpenModal,
   onCreateGhlTemplate,
   onSavePiece,
+  brandNameById,
 }: Props) {
   if (!pieces.length) {
     return (
@@ -147,6 +159,7 @@ export default function AgendaView({
           onAddToDay={onAddToDay}
           onCreateGhlTemplate={onCreateGhlTemplate}
           onSavePiece={onSavePiece}
+          brandNameById={brandNameById}
         />
       ))}
     </div>
