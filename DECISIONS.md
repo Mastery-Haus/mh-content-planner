@@ -181,3 +181,23 @@ Registro de decisiones de arquitectura/producto, en orden cronológico. Cada ent
 
 - **Por qué**: no tiene sentido bloquear todo el avance de publicación real esperando un permiso que no depende del equipo de desarrollo — YouTube en particular no comparte ese cuello de botella y puede arrancar ya.
 - **Alcance de YouTube y LinkedIn**: todavía sin definir en detalle (queda para cuando se arranque cada fase) — ver los checklists iniciales en Fase 5C/5D de TODO.md.
+
+---
+
+## 2026-09-08 — Decisión 12: migración del contenido que el jefe acumuló en su Artifact (Sofia Contreras)
+
+**Contexto**: mientras se construía esta app, el jefe de la usuaria seguía usando directo el Artifact original de `mockup.html` (no la app nueva) para cargar contenido real día a día. Había acumulado así 145 piezas reales (28 de agosto al 9 de septiembre) que había que migrar a la base real antes de que él pudiera pasarse a usar esta app.
+
+**Decisión — formato de exportación**: en vez de pedirle al jefe que exporte JSON a mano (requeriría abrir consola del navegador o ver código fuente, poco práctico para alguien no técnico), se usó el botón **"Exportar CSV"** que ya viene incorporado en el diseño original del mockup (`buildCsv()`/`exportCsv()` en `mockup.html`, vía `window.claude.use('downloads')` — funciona dentro del runtime de un Artifact real, a diferencia de la app nueva donde tuvo que reemplazarse por un Blob del navegador, ver Fase 2 en TODO.md). Un solo click, cero pasos técnicos para el jefe.
+
+**Problema del CSV**: `buildCsv()` exporta **etiquetas en español** (labels de `PLATFORM_META`/`FORMAT_LABEL`/`STATUS_META`), no los códigos internos que la DB espera (`instagram`, `pendiente`, `REEL`, etc.). Se escribió `scripts/import-csv.mjs`, que:
+- Parsea el CSV con un parser RFC4180 mínimo escrito a mano (comillas dobles para escapar comas/saltos de línea/comillas internas — mismo escaping que ya hace `csvEscape()` en el mockup, sin necesitar una librería).
+- Revierte las etiquetas a códigos internos importando directamente `PLATFORM_META`/`FORMAT_LABEL`/`STATUS_META` de `src/lib/pieces.ts` (vía `node --experimental-strip-types`, sin duplicar el mapeo a mano en el script) — así el mapeo nunca se desincroniza de la fuente real usada por la app.
+- Formato (`Formato`) revierte a código fijo solo si la etiqueta matchea uno conocido; si no (campos libres, como los nombres de campaña de Email Marketing: "Venta GTA", "Captación Gana tu día"), se deja el texto tal cual — coherente con que ese campo es freeform para esa plataforma.
+- Soporta `--dry-run` para ver una muestra de las piezas mapeadas antes de insertar de verdad.
+
+**Marca de destino**: se confirmó con la usuaria que las 145 piezas de este export son enteramente de la marca **Sofia Contreras** — el CSV no distingue marca en ningún campo (ni siquiera aparece la etiqueta "Instagram MH"), así que no había forma de inferirlo automáticamente; hacía falta la confirmación explícita. La marca Sofia Contreras estaba vacía (0 piezas) antes de este import, así que no hubo riesgo de duplicados. Se verificó además que ninguna fila del CSV coincide con las 2 piezas de email que ya existían en Mastery Haus (Decisión 8/9) — son contenido distinto, sin superposición.
+
+**Resultado**: 145 piezas insertadas, verificadas contra la DB real (conteo total y distribución por plataforma/estado coinciden exactamente con lo calculado del CSV antes de insertar). Dos observaciones de calidad de datos que se importaron tal cual (no se "corrigieron" sin confirmar con la usuaria): 122 de 123 piezas marcadas "Publicado" no tienen el link real cargado en "Link publicado", y 3 piezas de Email Marketing tienen el formato "Venga GTA" que probablemente sea un typo de "Venta GTA" (20 piezas) — pendiente de confirmar.
+
+**El CSV no se versiona**: el repo es público (`github.com/Mastery-Haus/mh-content-planner`) y el archivo contiene copy real de marketing — se agregó `*.csv` a `.gitignore` y se borró el archivo local una vez confirmado el import. El script `scripts/import-csv.mjs` sí quedó commiteado (reutilizable para futuros imports, sin datos reales adentro).

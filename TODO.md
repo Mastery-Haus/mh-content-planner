@@ -75,6 +75,15 @@ Convención: `[ ]` pendiente, `[~]` en curso, `[x]` hecho.
 - [ ] Manejo de fallos de publicación (marcar como `error` con detalle del motivo).
 - **Pausada por decisión explícita de la usuaria (2026-09-08)**: se prioriza primero YouTube, después LinkedIn, y recién después se vuelve a Meta — ver Decisión 11 en DECISIONS.md.
 
+## Fase 3B — Migración del contenido acumulado por el jefe (Sofia Contreras) ✅ (2026-09-08)
+Ver Decisión 12 en DECISIONS.md.
+- [x] El jefe todavía usaba directo el Artifact de `mockup.html` (no la app nueva) y había acumulado ahí contenido real del 28/ago al 09/sep. Exportó con el botón "Exportar CSV" ya incorporado en el mockup y se lo pasó a la usuaria.
+- [x] `scripts/import-csv.mjs`: revierte las etiquetas en español del CSV (plataforma/formato/estado) a los códigos internos usando `PLATFORM_META`/`FORMAT_LABEL`/`STATUS_META` de `src/lib/pieces.ts`, con `--dry-run` para validar antes de insertar.
+- [x] 145 piezas importadas a la marca **Sofia Contreras** (confirmado con la usuaria: todo el contenido de este export es de esa marca, no mezcla con Mastery Haus). Verificado el conteo y la distribución por plataforma/estado contra la DB real, sin superposición con las 2 piezas de email ya existentes en Mastery Haus.
+- [x] El CSV con contenido real no se versiona (repo público) — se agregó `*.csv` a `.gitignore` y se borró el archivo local tras importar.
+- **Pendiente de la usuaria/su jefe**: 122 de las 145 piezas marcadas "Publicado" no tienen el link real en "Link publicado" — quedaron así importadas tal cual, se pueden completar después desde la UI. También hay 3 piezas de Email Marketing con formato "Venga GTA" que parece un typo de "Venta GTA" (20 piezas) — se importaron tal cual, sin corregir, a la espera de que confirmen si es lo mismo.
+- **Pendiente**: que el jefe empiece a usar esta app en vez de su Artifact — todavía no confirmado que haya hecho el cambio.
+
 ## Fase 5C — Publicación real a YouTube (siguiente prioridad, no arrancada)
 - [ ] Definir alcance exacto (¿solo Shorts? ¿video largo también?) y confirmar credenciales: proyecto en Google Cloud Console + OAuth consent screen + credenciales de YouTube Data API v3.
 - [ ] Mismo problema de medios que Meta (Decisión 5): los links de Drive de `material` no sirven para subir el video directo — evaluar si aplica la misma solución (Supabase Storage) o si la API de YouTube puede tomar la URL de Drive de otra forma.
