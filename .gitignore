@@ -37,6 +37,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# exports/imports de datos reales (contenido de marketing, no va a un repo público)
+tablero-contenidos.csv
+*.csv
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
