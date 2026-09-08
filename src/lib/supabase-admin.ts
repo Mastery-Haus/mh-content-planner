@@ -26,4 +26,4 @@ export async function resolveBrandId(slug: string = DEFAULT_BRAND_SLUG): Promise
 }
 
 export const PIECE_COLUMNS =
-  "id, date, platform, format, angle, copy, material, portada, estado, notas, publicado";
+  "id, date, platform, format, angle, copy, material, portada, estado, notas, publicado, cta_label, ghl_template_id";

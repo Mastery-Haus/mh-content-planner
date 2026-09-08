@@ -6,13 +6,14 @@ Convención: `[ ]` pendiente, `[~]` en curso, `[x]` hecho.
 
 ---
 
-## Fase 0 — Setup del proyecto
+## Fase 0 — Setup del proyecto ✅
 - [x] Inicializar repo git y hacer el primer commit (incluyendo `mockup.html`, `CLAUDE.md`, `DECISIONS.md`, `TODO.md`).
 - [x] Scaffold de Next.js 16 (App Router, TypeScript, sin Tailwind) + cliente de Supabase instalado (`@supabase/supabase-js`, `@supabase/ssr`).
 - [x] Crear proyecto en Supabase (Postgres + Auth + Storage). Credenciales cargadas en `.env.local` y verificadas (URL + anon key + service role key responden correctamente contra el proyecto real).
 - [x] Variables de entorno completas en `.env.local` (Supabase listo; `META_APP_ID`/`META_APP_SECRET` ya cargados también; `META_ACCESS_TOKEN` queda vacío hasta Fase 5 a propósito).
 - [x] Conectar el repo a Vercel: login hecho por la usuaria (`npx vercel login`), proyecto enlazado (`vercel link`) como `mastery-haus-projects/mh-content-planner`.
-- [ ] Cargar las variables de entorno (Supabase + Meta) en Vercel (Production/Preview/Development). El intento de hacerlo vía `vercel env add` automáticamente fue bloqueado por el modo auto de Claude Code (acción sensible sobre servicio externo) — pendiente hacerlo a mano desde el dashboard de Vercel (Settings → Environment Variables) o re-autorizar el comando explícitamente.
+- [x] Cargar las variables de entorno (Supabase + Meta) en Vercel — hecho por la usuaria desde el dashboard (Settings → Environment Variables), verificado vía `vercel env ls`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `META_APP_ID`, `META_APP_SECRET` en Preview + Production. `META_ACCESS_TOKEN` sigue vacío a propósito (Fase 5).
+- [x] Repo subido a GitHub, público, bajo la organización **Mastery-Haus**: [github.com/Mastery-Haus/mh-content-planner](https://github.com/Mastery-Haus/mh-content-planner). Autenticado vía `gh` (binario descargado manualmente, sin Homebrew) con la cuenta `MasteryHaus`. Convención nueva establecida (2026-09-07): cualquier repo dentro de `~/Documents/Code/Proyectos Mastery Haus/` commitea automáticamente como `Usuario Apps <apps@masteryhaus.com>` vía `includeIf` en `~/.gitconfig` (no afecta otros proyectos de la usuaria fuera de esa carpeta).
 
 ## Fase 1 — Modelo de datos ✅
 - [x] Diseñar esquema: `brands` (Mastery Haus, Sofia Contreras), `pieces` (con `brand_id` FK). `users` se maneja vía Supabase Auth nativo (`auth.users`), sin tabla propia — no hace falta con auth simple sin roles (Decisión 4).
@@ -53,6 +54,22 @@ Convención: `[ ]` pendiente, `[~]` en curso, `[x]` hecho.
 - [ ] Al publicar con éxito, completar automáticamente el campo `publicado` con el link real y pasar `estado` a `publicado`.
 - [ ] Manejo de fallos de publicación (marcar como `error` con detalle del motivo).
 
+## Fase 5B — Integración real con GoHighLevel (Email Marketing) ✅
+Ver Decisión 6 en DECISIONS.md para el contexto completo. Alcance: solo plataforma Email Marketing (Newsletter usa Substack, sin integración).
+- [x] Migración `0002_ghl_email.sql`: columnas `cta_label` y `ghl_template_id` en `pieces` (`material` se reutiliza como link del botón CTA para piezas de email).
+- [x] `src/lib/email-template.ts` — wrapper de HTML (preheader, tabla, párrafos del copy, botón CTA en el marcador `{{cta}}`, footer legal fijo).
+- [x] `src/lib/ghl.ts` — cliente de la API de GHL (`createGhlEmailTemplate`), en dos pasos: `POST /emails/builder` (crea el shell) + `POST /emails/builder/data` (recién ahí guarda el HTML real — el primer paso solo no alcanza, ver Decisión 6).
+- [x] Ruta `api/pieces/[id]/ghl-template` (POST) — arma el HTML y crea/guarda la plantilla.
+- [x] UI en `PieceItem.tsx`: campos "Link del botón (CTA)" / "Texto del botón (CTA)" y botón "Crear plantilla en GoHighLevel" (visible solo para piezas de plataforma Email Marketing).
+- [x] Credenciales cargadas por la usuaria en `.env.local` (`GHL_API_KEY`, `GHL_LOCATION_ID`) — **probado extremo a extremo contra la cuenta real**: se creó una plantilla de prueba, se verificó que el HTML guardado en GHL contenía el copy/CTA reales (no el placeholder default), y se borró la plantilla y la pieza de prueba después.
+- [ ] Pendiente: cargar `GHL_API_KEY`/`GHL_LOCATION_ID` en Vercel también (hoy solo están en `.env.local`).
+- [x] Bug encontrado y arreglado (2026-09-08): el botón creaba una plantilla nueva en cada click en vez de actualizar la existente — dejaba huérfanas duplicadas en GHL (detectado por la usuaria mirando su lista de templates). `upsertGhlEmailTemplate` ahora actualiza si la pieza ya tiene `ghl_template_id`; se agregó protección de doble-click. Se limpiaron las 2 plantillas duplicadas que ya existían en la cuenta real.
+- [x] Investigado y descartado por ahora: elegir lista de contactos + programar/disparar el envío por API. `GET /emails/schedule` funciona (confirma que el recurso existe) pero `POST /emails/schedule` da 401 incluso con el token con TODOS los scopes habilitados — no es un problema de permisos del token, es una restricción de plataforma. Se sigue haciendo a mano en GHL después de crear la plantilla. Ver Decisión 6 en DECISIONS.md.
+- [x] Bug encontrado y arreglado (2026-09-08): botón "Crear plantilla" no distinguía crear de actualizar — siempre creaba una plantilla nueva, dejando huérfanas duplicadas en GHL cada vez que se tocaba (o con un doble-click). `upsertGhlEmailTemplate` ahora actualiza la plantilla existente si la pieza ya tiene `ghl_template_id`; se agregó protección de doble-click en el botón. Se limpiaron las 2 plantillas duplicadas que ya existían en la cuenta real.
+- [x] Botón "Guardar" por pieza restaurado (existía en el mockup, se había sacado en Fase 2 por parecer redundante con el autosave): fuerza el flush de cambios pendientes de esa pieza puntual y muestra una confirmación visual clara ("✓ Guardado", flash verde) ahí mismo — sin esto, la única señal de guardado exitoso era el indicador global del header, poco visible mientras se edita bien abajo en una pieza larga.
+- [x] Tooltip simple (atributo `title` nativo, ícono "ⓘ") en el campo Copy de piezas Email explicando la convención de `{{contact.first_name}}` y `{{cta}}`.
+- [ ] Pendiente lateral (no bloqueante): el `.md` que se descarga del Drive del Proyecto de Claude tiene un bug de encoding (mojibake, probablemente por trabajar con una agencia brasilera cuyo export usa un charset distinto a UTF-8) — conviene arreglarlo en el origen.
+
 ## Fase 6 — Pulido y salida a producción
 - [ ] QA visual comparando contra `mockup.html` (pixel a pixel, ambos temas claro/oscuro).
 - [ ] Probar el flujo completo con datos reales de ambas marcas.
@@ -63,12 +80,12 @@ Convención: `[ ]` pendiente, `[~]` en curso, `[x]` hecho.
 
 ## Estado actual (última sesión: 2026-09-07)
 
-Fases 0 (salvo la carga de env vars en Vercel), 1, 2 y 4 completas. La UI del Tablero de Salida está portada 1:1 (Agenda, Lista rediseñada con columnas compactas, stats, modal, FAB, CSV) y leyendo/escribiendo la tabla `pieces` real de Supabase vía API routes de Next.js, con autosave por campo + retry automático con backoff si falla el guardado. Sin auth todavía (acceso directo, marca hardcodeada a Mastery Haus).
+Fases 0, 1, 2 y 4 completas. La UI del Tablero de Salida está portada 1:1 (Agenda, Lista rediseñada con columnas compactas + filtros colapsables de fecha/plataforma/estado, stats, modal, FAB, CSV) y leyendo/escribiendo la tabla `pieces` real de Supabase vía API routes de Next.js, con autosave por campo + retry automático con backoff si falla el guardado. Sin auth todavía (acceso directo, marca hardcodeada a Mastery Haus).
 
-Bug real encontrado y arreglado esta sesión: hydration mismatch por usar `new Date()` directo durante el render en `Tablero`/`AgendaView` (SSR vs. cliente pueden diferir de zona horaria en producción). Se resolvió con `useSyncExternalStore` (snapshot de servidor vía prop `serverToday` desde `page.tsx`, corregido al del cliente real post-hidratación) — verificado forzando un reloj de cliente en otro mes que el servidor, sin warning y con el mes correcto.
+Bug real encontrado y arreglado esta sesión: hydration mismatch por usar `new Date()` directo durante el render en `Tablero`/`AgendaView` (SSR vs. cliente pueden diferir de zona horaria en producción). Se resolvió con `useSyncExternalStore` (snapshot de servidor vía prop `serverToday` desde `page.tsx`, corregido al del cliente real post-hidratación) — verificado forzando un reloj de cliente en otro mes que el servidor, sin warning y con el mes correcto. También se silenció con `suppressHydrationWarning` en `<body>` el ruido de extensiones de navegador (ColorZilla inyectando `cz-shortcut-listen`) — falso positivo no relacionado a nuestro código.
 
-Pendiente de Fase 0: cargar las env vars (Supabase + Meta) en Vercel — bloqueado por el modo auto de Claude Code, pendiente hacerlo a mano desde el dashboard.
+Fase 0 cerrada del todo esta sesión: env vars cargadas y verificadas en Vercel (deploy probado por la usuaria, funciona), y el repo subido a GitHub (público, org Mastery-Haus) con la convención de identidad git para toda la carpeta de proyectos.
 
-Filtros de Lista (fecha/plataforma/estado) implementados y verificados.
+Fase 5B completa: integración real con GoHighLevel para crear plantillas de email por API (ver Decisión 6), probada de punta a punta contra la cuenta real. Se encontró y corrigió un problema real en el camino: el POST inicial a `/emails/builder` ignora el HTML — hace falta un segundo llamado a `/emails/builder/data` para que el contenido quede guardado de verdad (con `updatedBy` obligatorio). Falta solo cargar las credenciales de GHL en Vercel (ya están en `.env.local`).
 
-**Próximo paso al retomar**: la Fase 3 (login) sigue pospuesta a pedido de la usuaria. Opciones abiertas: más pulido de UI, o Fase 5 en cuanto la usuaria consiga el token de Meta.
+**Próximo paso al retomar**: la Fase 3 (login) sigue pospuesta a pedido de la usuaria. Opciones abiertas: cargar las credenciales de GHL en Vercel, más pulido de UI, o Fase 5 (Meta) en cuanto la usuaria resuelva el tema de permisos/admin del Business Manager dueño de la app.

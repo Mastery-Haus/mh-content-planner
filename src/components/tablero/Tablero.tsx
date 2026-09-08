@@ -173,9 +173,9 @@ export default function Tablero({ brandName, initialPieces, serverToday }: Props
     setPieces((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }
 
-  async function flushPiece(id: string) {
+  async function flushPiece(id: string): Promise<boolean> {
     const patch = pendingPatches.current.get(id);
-    if (!patch) return;
+    if (!patch) return true;
     pendingPatches.current.delete(id);
     const t = timers.current.get(id);
     if (t) clearTimeout(t);
@@ -213,11 +213,20 @@ export default function Tablero({ brandName, initialPieces, serverToday }: Props
         showToast("No se pudo guardar un cambio después de varios intentos — revisá tu conexión y tocá Guardar.");
         recomputeSaveStatus((err as Error).message);
       }
-      return;
+      return false;
     }
     retryAttempts.current.delete(id);
     inFlightCount.current--;
     recomputeSaveStatus();
+    return true;
+  }
+
+  // Guardado manual de UNA pieza puntual (botón "Guardar" en su detalle) — reinicia el
+  // contador de reintentos (como flushAll) y devuelve si quedó efectivamente guardada,
+  // para que el botón pueda mostrar una confirmación visual clara ahí mismo.
+  async function savePieceNow(id: string): Promise<boolean> {
+    retryAttempts.current.delete(id);
+    return flushPiece(id);
   }
 
   function queuePatch(id: string, patch: Partial<Piece>) {
@@ -295,6 +304,7 @@ export default function Tablero({ brandName, initialPieces, serverToday }: Props
           material: source.material,
           portada: source.portada,
           notas: source.notas,
+          cta_label: source.cta_label,
         }),
       });
       if (!res.ok) throw new Error("No se pudo duplicar la pieza");
@@ -309,6 +319,18 @@ export default function Tablero({ brandName, initialPieces, serverToday }: Props
       showToast("Pieza duplicada — ajustá la plataforma y el copy.");
     } catch (err) {
       showToast((err as Error).message || "No se pudo duplicar la pieza.");
+    }
+  }
+
+  async function createGhlTemplate(id: string) {
+    try {
+      const res = await fetch(`/api/pieces/${id}/ghl-template`, { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "No se pudo crear la plantilla en GoHighLevel");
+      updateLocal(id, { ghl_template_id: body.templateId });
+      showToast("Plantilla creada en GoHighLevel — terminá el envío (lista y programación) desde ahí.");
+    } catch (err) {
+      showToast((err as Error).message || "No se pudo crear la plantilla en GoHighLevel.");
     }
   }
 
@@ -436,6 +458,8 @@ export default function Tablero({ brandName, initialPieces, serverToday }: Props
             onDuplicate={duplicatePiece}
             onAddToDay={handleAddToDay}
             onOpenModal={() => setModalOpen(true)}
+            onCreateGhlTemplate={createGhlTemplate}
+            onSavePiece={savePieceNow}
           />
         ) : (
           <ListaView

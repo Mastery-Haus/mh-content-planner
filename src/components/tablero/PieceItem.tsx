@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { useArmedDelete } from "./useArmedDelete";
 import {
@@ -22,6 +22,8 @@ interface Props {
   onFieldChange: (id: string, patch: Partial<Piece>) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onCreateGhlTemplate: (id: string) => Promise<void>;
+  onSavePiece: (id: string) => Promise<boolean>;
 }
 
 function LinkField({
@@ -55,7 +57,7 @@ function LinkField({
   );
 }
 
-export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete, onDuplicate }: Props) {
+export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete, onDuplicate, onCreateGhlTemplate, onSavePiece }: Props) {
   const { armed, handleClick: handleDeleteClick } = useArmedDelete(() => onDelete(piece.id));
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
@@ -69,6 +71,39 @@ export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete,
 
   const pf = PLATFORM_META[piece.platform] ?? PLATFORM_META.instagram;
   const st = STATUS_META[piece.estado] ?? STATUS_META.pendiente;
+  const isEmail = piece.platform === "email";
+
+  // Evita el doble-click: sin esto, dos clicks rápidos disparaban dos POST y, si la
+  // pieza todavía no tenía ghl_template_id, creaban dos plantillas duplicadas en GHL.
+  const [creatingGhl, setCreatingGhl] = useState(false);
+  async function handleCreateGhlTemplate() {
+    if (creatingGhl) return;
+    setCreatingGhl(true);
+    try {
+      await onCreateGhlTemplate(piece.id);
+    } finally {
+      setCreatingGhl(false);
+    }
+  }
+
+  // Botón "Guardar" propio de la pieza: fuerza el flush de lo pendiente (si hay) y da
+  // una confirmación visual clara ahí mismo — sin esto, la única señal de que algo se
+  // guardó era el indicador global del header, poco visible mientras se edita bien abajo.
+  const [savingPiece, setSavingPiece] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  async function handleSavePiece() {
+    if (savingPiece) return;
+    setSavingPiece(true);
+    try {
+      const ok = await onSavePiece(piece.id);
+      if (ok) {
+        setSavedFlash(true);
+        setTimeout(() => setSavedFlash(false), 1400);
+      }
+    } finally {
+      setSavingPiece(false);
+    }
+  }
 
   const mini: Array<[string, string, string, string]> = [
     ["copy", "i-copy", piece.copy, "Copy"],
@@ -190,28 +225,64 @@ export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete,
         </div>
 
         <div className="field">
-          <label>Copy</label>
+          <label>
+            Copy
+            {isEmail && (
+              <span
+                className="info-hint"
+                title="Escribí {{contact.first_name}} donde quieras el nombre del contacto, y una línea con {{cta}} sola donde quieras que aparezca el botón."
+              >
+                ⓘ
+              </span>
+            )}
+          </label>
           <textarea value={piece.copy} onChange={(e) => onFieldChange(piece.id, { copy: e.target.value })} />
         </div>
 
         <div className="field-row">
           <div className="field">
-            <label>Material terminado</label>
+            <label>{isEmail ? "Link del botón (CTA)" : "Material terminado"}</label>
             <LinkField
               value={piece.material}
-              placeholder="Link a la pieza terminada"
+              placeholder={isEmail ? "Ej: https://soficontreras.com/gta-page?utm_..." : "Link a la pieza terminada"}
               onChange={(v) => onFieldChange(piece.id, { material: v })}
             />
           </div>
-          <div className="field">
-            <label>Portada</label>
-            <LinkField
-              value={piece.portada}
-              placeholder="Link a la portada"
-              onChange={(v) => onFieldChange(piece.id, { portada: v })}
-            />
-          </div>
+          {isEmail ? (
+            <div className="field">
+              <label>Texto del botón (CTA)</label>
+              <input
+                type="text"
+                value={piece.cta_label}
+                placeholder='Ej: QUIERO GANAR MI AÑO →'
+                onChange={(e) => onFieldChange(piece.id, { cta_label: e.target.value })}
+              />
+            </div>
+          ) : (
+            <div className="field">
+              <label>Portada</label>
+              <LinkField
+                value={piece.portada}
+                placeholder="Link a la portada"
+                onChange={(v) => onFieldChange(piece.id, { portada: v })}
+              />
+            </div>
+          )}
         </div>
+
+        {isEmail && (
+          <div className="field-row ghl-row">
+            <button className="btn subtle" disabled={creatingGhl} onClick={handleCreateGhlTemplate}>
+              <Icon name="i-email" />
+              {creatingGhl
+                ? "Guardando…"
+                : piece.ghl_template_id
+                  ? "Actualizar plantilla en GoHighLevel"
+                  : "Crear plantilla en GoHighLevel"}
+            </button>
+            {piece.ghl_template_id && <span className="ghl-template-note">Plantilla GHL: {piece.ghl_template_id}</span>}
+          </div>
+        )}
 
         <div className="field-row">
           <div className="field">
@@ -243,6 +314,14 @@ export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete,
           <button className="btn subtle" onClick={() => onDuplicate(piece.id)}>
             <Icon name="i-duplicate" />
             Duplicar
+          </button>
+          <button
+            className={"btn save-cta" + (savedFlash ? " flash" : "")}
+            disabled={savingPiece}
+            onClick={handleSavePiece}
+          >
+            <Icon name="i-save" />
+            <span className="btn-label">{savingPiece ? "Guardando…" : savedFlash ? "✓ Guardado" : "Guardar"}</span>
           </button>
           <button className="danger-btn" onClick={handleDeleteClick}>
             {armed ? "Confirmar borrado" : "Eliminar pieza"}

@@ -51,3 +51,44 @@ Registro de decisiones de arquitectura/producto, en orden cronológico. Cada ent
 
 - **Por qué `useSyncExternalStore` y no un `useEffect` que llama `setState` al montar**: es el mecanismo que React expone específicamente para "un valor que puede diferir entre servidor y cliente" (le compilador/eslint de hooks del proyecto además rechaza `setState` síncrono como primera instrucción de un efecto — `react-hooks/set-state-in-effect`). Con `useSyncExternalStore` no hace falta pelear con esa regla ni aceptar un re-render extra manual.
 - **Alcance**: cualquier componente nuevo que necesite "la fecha/hora actual" durante el render (no dentro de un handler de evento) debe seguir este mismo patrón — nunca `new Date()` suelto en el cuerpo de un componente que se server-renderea.
+
+---
+
+## 2026-09-07 — Bug real: inputs de `.field` desbordaban su contenedor (`all: unset` pisa `box-sizing`)
+
+**Contexto**: la usuaria reportó los campos del detalle de pieza "muy pegados" / tocando el borde derecho, incluso a zoom 100%. Se confirmó con un diagnóstico de `scrollWidth` vs `clientWidth` en varios anchos de viewport: cada `<input>`/`<select>` dentro de `.field` desbordaba su contenedor por exactamente `padding-horizontal×2 + borde×2` (26px con el padding vigente), en todos los anchos probados — no era zoom ni un problema de layout responsive.
+
+**Causa raíz**: `.field input[type="text"], ...` usa `all: unset` para resetear los estilos default del navegador (heredado tal cual del mockup). `all: unset` también resetea `box-sizing` a su valor inicial (`content-box`), pisando el `* { box-sizing: border-box }` global de la app. Con `content-box` + `width: 100%` + padding + borde, el elemento renderiza más ancho que su contenedor — exactamente por el padding y el borde. Los campos que usan `.linkfield` (input + botón "abrir") no mostraban el problema porque ese input tiene `flex: 1` dentro de un contenedor flex, lo que hace que el navegador ignore la propiedad `width` como base de cálculo (flex-basis 0%) y listado el bug quede oculto ahí — pero afecta a **cualquier** `<input>`/`<select>` directo de `.field` (fecha, plataforma, formato/campaña, ángulo, estado, y los nuevos de CTA). Este bug ya estaba en el mockup original (mismo patrón `all: unset` + `width: 100%`), solo que no se había notado.
+
+**Fix**: agregar `box-sizing: border-box;` explícito justo después de `all: unset` en esa regla. Verificado con el mismo diagnóstico de `scrollWidth`/`clientWidth` en varios anchos (700–1440px) — el desborde desapareció por completo.
+
+---
+
+## 2026-09-08 — Bug real: "Crear plantilla en GoHighLevel" creaba una plantilla nueva en cada click
+
+**Contexto**: la usuaria detectó, mirando la lista de templates en GHL, dos plantillas duplicadas con el mismo nombre y timestamp casi idéntico — consecuencia de un doble-click en el botón. `upsertGhlEmailTemplate` (antes `createGhlEmailTemplate`) siempre hacía `POST /emails/builder` (crear) sin chequear si la pieza ya tenía un `ghl_template_id` — cada click, exitoso o repetido, generaba una plantilla huérfana nueva en la cuenta real de GHL, dejando basura acumulándose.
+
+**Fix**: `upsertGhlEmailTemplate` ahora recibe `existingTemplateId` — si la pieza ya tiene `ghl_template_id`, se saltea el paso de creación y va directo a `POST /emails/builder/data` sobre esa misma plantilla (actualiza en vez de crear). Además se agregó protección de doble-click en el botón (estado `creatingGhl` en `PieceItem.tsx`, deshabilita el botón mientras la request está en curso). Verificado llamando la ruta dos veces seguidas sobre la misma pieza: el `templateId` devuelto es idéntico y no aparece una segunda plantilla en GHL. Las dos plantillas duplicadas preexistentes de la usuaria se identificaron (comparando contra el `ghl_template_id` real guardado en la pieza) y se borró la huérfana.
+
+**Investigación en paralelo — ¿se puede crear una campaign real (no solo template) por API?**: la usuaria preguntó si convenía repensar esto para evitar el paso manual de armar el envío en GHL. Se confirmó contra la cuenta real: `GET /emails/schedule` **funciona** con el token actual y devuelve campañas reales existentes (confirma que el recurso existe y tiene esta forma: `name`, `campaignType`, `status`, `templateId`, etc.), pero `POST /emails/schedule` devuelve 401 "the token is not authorized for this scope".
+
+**Actualización**: la usuaria confirmó que el token YA tenía todos los scopes disponibles marcados (incluido `emails/schedule.write`, `emails/campaigns.write`, etc. — ver captura de Configuración de scopes) desde el vamos, no algo que haya cambiado recién. El 401 persiste igual. Conclusión: esto no es un problema de scopes del token — es una restricción a nivel de plataforma/endpoint que GHL aplica más allá del modelo de scopes visible (probablemente por las mismas razones de compliance/anti-spam que motivan a la mayoría de los ESP a no dejar disparar envíos masivos vía un token simple sin review adicional). **Se pausa esta línea de investigación** — no vale la pena seguir insistiendo sin soporte directo de GHL. La integración se queda en "crear/actualizar plantilla por API + enviar a mano desde GHL", que es lo que ya funciona.
+
+---
+
+## 2026-09-07 — Decisión 6: integración real con GoHighLevel (Fase 5B, solo Email Marketing)
+
+**Contexto**: La usuaria redacta el copy de los mails en un Proyecto de Claude aparte, lo baja como `.md` de Drive, lo envuelve a mano en un boilerplate HTML (preheader, tabla, botón CTA, firma, footer legal) y lo pega en GoHighLevel (Marketing → Emails → Email Campaigns → carpeta → Blank → Code Editor). Quiere automatizar ese pegado manual.
+
+**Investigación previa a decidir**: antes de proponer arquitectura, se verificó contra código real de un cliente open-source de la API de GHL (no solo marketing docs) que `POST https://services.leadconnectorhq.com/emails/builder` (header `Version: 2021-07-28`, Bearer token) crea una plantilla de email con HTML custom. Lo que NO se pudo confirmar con el mismo nivel de certeza es si elegir la lista de contactos + programar/disparar el envío también es automatizable por API (existe el scope `emails/schedule.write`, pero no se encontró código real que lo use) — **fuera de alcance de esta fase**: la plantilla se crea por API, pero programar el envío se sigue haciendo a mano en GHL.
+
+**Corrección tras probar contra la cuenta real (importante)**: el `POST /emails/builder` inicial **ignora el campo `html`** — crea la plantilla con el placeholder default de GHL ("Welcome to email", botón "Start creating"), no con nuestro contenido. Hace falta un segundo llamado, `POST /emails/builder/data` con `{ locationId, templateId, html, editorType: 'html', updatedBy: '<string no vacío>' }`, para que el HTML real quede guardado (`updatedBy` es obligatorio — sin él GHL responde 422 "updatedBy should not be empty"). `createGhlEmailTemplate` en `src/lib/ghl.ts` encadena ambos pasos. Verificado extremo a extremo contra la cuenta real: se creó una plantilla de prueba, se confirmó que el HTML contenía el copy/CTA reales (no el placeholder), y se borró después.
+
+**Decisión**: 
+- Alcance solo **Email Marketing** (no Newsletter — usa Substack, herramienta aparte, sin integración).
+- Una sola cuenta/location de GHL (no hace falta un token distinto por marca).
+- `material` se reutiliza en piezas `platform: email` como el link del botón CTA (relabeled en la UI a "Link del botón (CTA)"); se agregaron dos columnas nuevas a `pieces`: `cta_label` (texto del botón) y `ghl_template_id` (id de la plantilla ya creada, si la hay). El asunto/título de la plantilla sale de `angle`.
+- Convención de redacción: el copy ya incluye saludo y firma/PD como texto normal (tal cual lo redacta la usuaria); el wrapper de HTML (`src/lib/email-template.ts`) NO los agrega — solo inserta el botón CTA en el punto donde el copy tenga una línea que diga exactamente `{{cta}}` (si no hay marcador, el botón va al final). Cada línea no vacía del copy se envuelve en su propio `<p>`.
+- Footer legal (Mastery Haus / Tempus Rocket LLC, aviso legal, privacidad, `{{email.unsubscribe_link}}`) queda fijo en el wrapper — no varía por pieza.
+- **Nota de bug lateral detectada**: el `.md` exportado desde Drive tiene problemas de encoding (mojibake, `Ã­` en vez de `í`) — vale la pena arreglarlo en el origen (el proceso de export del Proyecto de Claude/Drive), no es algo que este wrapper corrija.
+- **Pendiente de la usuaria**: generar el Private Integration Token en GHL (scopes `emails/builder.readonly` + `.write`) y el `GHL_LOCATION_ID`, cargarlos en `.env.local` y en Vercel.

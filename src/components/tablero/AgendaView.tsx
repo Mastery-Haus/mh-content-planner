@@ -14,6 +14,8 @@ interface Props {
   onDuplicate: (id: string) => void;
   onAddToDay: (date: string) => void;
   onOpenModal: () => void;
+  onCreateGhlTemplate: (id: string) => Promise<void>;
+  onSavePiece: (id: string) => Promise<boolean>;
 }
 
 function DayCard({
@@ -27,7 +29,7 @@ function DayCard({
   dayPieces: Piece[];
   isToday: boolean;
   forceOpen: boolean;
-} & Pick<Props, "forceOpenId" | "onFieldChange" | "onDelete" | "onDuplicate" | "onAddToDay">) {
+} & Pick<Props, "forceOpenId" | "onFieldChange" | "onDelete" | "onDuplicate" | "onAddToDay" | "onCreateGhlTemplate" | "onSavePiece">) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
@@ -84,6 +86,8 @@ function DayCard({
             onFieldChange={rest.onFieldChange}
             onDelete={rest.onDelete}
             onDuplicate={rest.onDuplicate}
+            onCreateGhlTemplate={rest.onCreateGhlTemplate}
+            onSavePiece={rest.onSavePiece}
           />
         ))}
       </div>
@@ -103,6 +107,8 @@ export default function AgendaView({
   onDuplicate,
   onAddToDay,
   onOpenModal,
+  onCreateGhlTemplate,
+  onSavePiece,
 }: Props) {
   if (!pieces.length) {
     return (
@@ -139,6 +145,8 @@ export default function AgendaView({
           onDelete={onDelete}
           onDuplicate={onDuplicate}
           onAddToDay={onAddToDay}
+          onCreateGhlTemplate={onCreateGhlTemplate}
+          onSavePiece={onSavePiece}
         />
       ))}
     </div>

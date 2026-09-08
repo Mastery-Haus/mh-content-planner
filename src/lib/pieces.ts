@@ -26,6 +26,10 @@ export interface Piece {
   estado: Estado;
   notas: string;
   publicado: string;
+  // Fase 5B (GoHighLevel): solo tienen sentido cuando platform === 'email'. `material` se
+  // reutiliza ahí como el link del botón CTA — ver DECISIONS.md Decisión 6.
+  cta_label: string;
+  ghl_template_id: string;
 }
 
 export const PLATFORMS: Platform[] = [
@@ -144,4 +148,5 @@ export const EDITABLE_FIELDS = [
   "estado",
   "notas",
   "publicado",
+  "cta_label",
 ] as const;

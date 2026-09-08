@@ -743,13 +743,13 @@ details.piece > summary:focus-visible {
   padding: 4px 20px 20px 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 20px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 .field label {
   font-size: 11px;
@@ -758,16 +758,33 @@ details.piece > summary:focus-visible {
   color: var(--ink-faint);
   text-transform: uppercase;
 }
+.info-hint {
+  display: inline-block;
+  margin-left: 5px;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink-faint);
+  cursor: help;
+}
+.info-hint:hover {
+  color: var(--accent);
+}
 .field input[type="text"],
 .field input[type="url"],
 .field input[type="date"],
 .field textarea,
 .field select {
   all: unset;
+  /* `all: unset` resetea box-sizing al valor inicial (content-box), pisando el
+     border-box global — sin esto, width:100% + padding + borde overflowea el
+     contenedor por exactamente padding*2 + borde*2. */
+  box-sizing: border-box;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 8px 10px;
+  padding: 10px 12px;
   font-size: 13.5px;
   width: 100%;
 }
@@ -812,6 +829,14 @@ details.piece > summary:focus-visible {
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
+}
+.ghl-row {
+  align-items: center;
+  gap: 10px;
+}
+.ghl-template-note {
+  font-size: 12px;
+  color: var(--ink-faint);
 }
 .danger-btn {
   all: unset;
