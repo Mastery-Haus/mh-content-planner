@@ -162,3 +162,22 @@ Registro de decisiones de arquitectura/producto, en orden cronológico. Cada ent
 **Orden de deploy importante**: como `PIECE_COLUMNS` (el `select` que usan todas las rutas de `pieces`) ahora incluye `email_html_override`, la migración tiene que estar aplicada en Supabase **antes** de deployar este código — si el código sale primero, cualquier `GET /api/pieces` fallaría porque pediría una columna inexistente. Se verificó la columna por API antes de levantar el servidor de desarrollo local (que apunta al mismo proyecto real, no hay entorno separado) y antes de dar por lista la verificación en navegador.
 
 **Verificación**: recorrido con Playwright + Chrome del sistema (`playwright-core` instalado con `--no-save`, sin quedar como dependencia) contra una pieza creada expresamente para la prueba (ángulo `PLAYWRIGHT-TEST-EMAIL-PREVIEW-DELETE-ME`, insertada y borrada por API) y localizada por ese texto exacto — nunca "la primera pieza visible", aplicando la lección de la Decisión 9. Confirmado: la vista previa muestra el markdown ya convertido a HTML real (`<strong>`), el marcador `{{cta}}` no queda literal, la edición manual persiste con un `PATCH` real (200) y queda marcada con la nota "editado a mano", y "Volver a generar automático" limpia el override correctamente (confirmado leyendo la fila directo de la DB). `npm run build` limpio. Pieza y usuario de prueba borrados al cerrar.
+
+---
+
+## 2026-09-08 — Decisión 11: orden de publicación real más allá de Meta (YouTube → LinkedIn → Meta)
+
+**Contexto**: Fase 5 (Meta) sigue bloqueada por el permiso de Admin en el Business Manager dueño de la app (ver Decisión 1/kickoff y TODO.md). Se conversó con la usuaria sobre herramientas alternativas para no quedar completamente frenados por ese bloqueo.
+
+**Alternativas evaluadas y descartadas para reemplazar/evitar el problema de Meta específicamente**:
+- **Zapier**: tiene integraciones pre-aprobadas de partner para Instagram/Facebook/LinkedIn/YouTube/TikTok — conectando por el OAuth propio de Zapier (no nuestra app de Meta) probablemente evita el gate de Business Manager, pero cambia la dependencia a la cuenta/plan de Zapier en vez de tener el código de la integración en este repo.
+- **n8n**: se descartó como atajo para Meta puntualmente — n8n no tiene una integración de partner pre-aprobada como Zapier para Instagram/Facebook; llamaría a la Graph API cruda vía HTTP Request, necesitando la misma app propia de Meta con los mismos permisos que ya nos bloquean. Sí serviría como capa de orquestación general (ej. "cuando una pieza pasa a listo → publicar → actualizar la DB"), pero no resuelve el problema puntual de Meta.
+- La usuaria mencionó que ya tiene n8n disponible (no aclaró si self-hosted o cloud, ni si ya está en uso en Mastery Haus para otra cosa) — **no se decidió usarlo todavía**, queda anotado como opción a evaluar más adelante, sin acción concreta por ahora.
+
+**Decisión — orden de plataformas a partir de acá**: en vez de esperar a que se resuelva el permiso de Meta, se prioriza sumar publicación real a otras plataformas que no dependen de ese bloqueo específico, en este orden:
+1. **YouTube** (Data API v3) — API propia de Google, sin nada equivalente al Business Manager de Meta bloqueando. Nueva Fase 5C en TODO.md, sin arrancar.
+2. **LinkedIn** — con la salvedad de que publicar a una Página de empresa (no un perfil personal) sí exige su propia aprobación de partner de LinkedIn, con una fricción similar a la de Meta; hay que confirmar esto al arrancar la fase antes de asumir que no tiene el mismo problema. Nueva Fase 5D en TODO.md, sin arrancar.
+3. Recién después se retoma Fase 5 (Meta), cuando la usuaria resuelva el permiso de Business Manager.
+
+- **Por qué**: no tiene sentido bloquear todo el avance de publicación real esperando un permiso que no depende del equipo de desarrollo — YouTube en particular no comparte ese cuello de botella y puede arrancar ya.
+- **Alcance de YouTube y LinkedIn**: todavía sin definir en detalle (queda para cuando se arranque cada fase) — ver los checklists iniciales en Fase 5C/5D de TODO.md.

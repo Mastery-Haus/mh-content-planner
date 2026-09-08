@@ -67,12 +67,23 @@ Convención: `[ ]` pendiente, `[~]` en curso, `[x]` hecho.
 - [x] Indicador de estado de guardado (`save-status`) conectado a las llamadas de red reales (pendiente/guardando/guardado/error), no a un `docVersion` en memoria — resuelto en Fase 2.
 - [x] Manejo de errores de guardado (estado `error` visible si falla la escritura), con **retry automático con backoff exponencial** (1.5s, 3s, 6s, 12s, 15s tope — 5 intentos) sin que el usuario tenga que intervenir. Mensaje `save-status` muestra "reintentando (n/5)…" durante los reintentos; si se agotan, pide guardar a mano. Un edit nuevo o un clic en "Guardar" reinicia el contador de intentos. Implementado y probado en `Tablero.tsx` (`flushPiece`/`queuePatch`/`flushAll`) interceptando requests con Playwright para forzar fallas — reintenta y se recupera correctamente.
 
-## Fase 5 — Publicación real a Meta (bloqueada parcialmente — ver pendiente de la usuaria)
-- [ ] **Bloqueante — acción de la usuaria**: obtener token de acceso permanente desde Business Settings de Meta (System User token o Page Access Token de larga duración).
+## Fase 5 — Publicación real a Meta (pausada — ver Decisión 11, orden de plataformas cambió)
+- [ ] **Bloqueante — acción de la usuaria**: obtener token de acceso permanente desde Business Settings de Meta (System User token o Page Access Token de larga duración) y/o el permiso de Admin en el Business Manager dueño de la app.
 - [ ] Resolver el problema de medios: los links de Google Drive de `material`/`portada` no sirven directo para la Graph API — evaluar subida a Supabase Storage u otro paso intermedio (ver Decisión 5 en DECISIONS.md).
 - [ ] Integrar Graph API para publicar en Instagram (Reels, Carrusel, Post) y Facebook (Reels, Carrusel, Post) desde la app.
 - [ ] Al publicar con éxito, completar automáticamente el campo `publicado` con el link real y pasar `estado` a `publicado`.
 - [ ] Manejo de fallos de publicación (marcar como `error` con detalle del motivo).
+- **Pausada por decisión explícita de la usuaria (2026-09-08)**: se prioriza primero YouTube, después LinkedIn, y recién después se vuelve a Meta — ver Decisión 11 en DECISIONS.md.
+
+## Fase 5C — Publicación real a YouTube (siguiente prioridad, no arrancada)
+- [ ] Definir alcance exacto (¿solo Shorts? ¿video largo también?) y confirmar credenciales: proyecto en Google Cloud Console + OAuth consent screen + credenciales de YouTube Data API v3.
+- [ ] Mismo problema de medios que Meta (Decisión 5): los links de Drive de `material` no sirven para subir el video directo — evaluar si aplica la misma solución (Supabase Storage) o si la API de YouTube puede tomar la URL de Drive de otra forma.
+- [ ] Integrar YouTube Data API v3 (`videos.insert`) para publicar desde la app.
+- [ ] Al publicar con éxito, completar `publicado` con el link real y pasar `estado` a `publicado` (mismo patrón que se dejó pensado para Meta).
+
+## Fase 5D — Publicación real a LinkedIn (después de YouTube, no arrancada)
+- [ ] Confirmar si se publica a una Página de empresa (requiere partner approval de LinkedIn, similar fricción a la de Meta) o a un perfil personal (más simple, sin ese gate) — define si esta fase se puede arrancar sin esperar una aprobación externa.
+- [ ] Resto del alcance a definir cuando se llegue a esta fase.
 
 ## Fase 5B — Integración real con GoHighLevel (Email Marketing) ✅
 Ver Decisión 6 en DECISIONS.md para el contexto completo. Alcance: solo plataforma Email Marketing (Newsletter usa Substack, sin integración).
@@ -133,11 +144,14 @@ Repo en GitHub (público, org Mastery-Haus, `Mastery-Haus/mh-content-planner`), 
 
 Misma sesión, a pedido de la usuaria: se agregó carga de copy desde archivo `.md` + soporte de markdown inline real (negrita/itálica/links) en el mail generado — ver Fase 5B (extensión) arriba y Decisión 9 en DECISIONS.md. Durante la verificación en navegador hubo un incidente (script de prueba mal apuntado sobrescribió por unos minutos el copy real de la pieza de producción `bdd7a4f0…`) detectado y restaurado en la misma sesión — documentado en detalle en Fase 5B y Decisión 9, sin impacto final.
 
-Misma sesión, tercer pedido de la usuaria: vista previa del mail + edición manual del HTML con override persistente — ver Fase 5B (segunda extensión) arriba y Decisión 10 en DECISIONS.md. Verificado en navegador contra una pieza de prueba dedicada (creada y borrada por API, nunca "la primera pieza visible" — aplicando la lección del incidente anterior).
+Misma sesión, tercer pedido de la usuaria: vista previa del mail + edición manual del HTML con override persistente — ver Fase 5B (segunda extensión) arriba y Decisión 10 en DECISIONS.md. Verificado en navegador contra una pieza de prueba dedicada (creada y borrada por API, nunca "la primera pieza visible" — aplicando la lección del incidente anterior). Ambas extensiones de Fase 5B ya committeadas y pusheadas a `main` (commits `9eb897b` y `aafa25a`), deployando a producción vía Vercel.
+
+Para cerrar la sesión se conversó sobre alternativas a Meta para seguir sumando publicación real dado el bloqueo de permisos — se descartó Zapier y n8n como atajo para Meta específicamente (ambos terminan necesitando la misma app propia de Meta con los mismos permisos de Business Manager; n8n llamaría a la Graph API cruda igual que haríamos nosotros). La usuaria decidió el orden: **YouTube primero, después LinkedIn, recién después se retoma Meta** — ver Decisión 11 en DECISIONS.md (con las fases 5C y 5D nuevas arriba, todavía sin arrancar). La usuaria mencionó que ya tiene n8n disponible — no se decidió usarlo todavía, queda como opción a evaluar más adelante (ver Decisión 11).
 
 **Próximo paso al retomar**: sin bloqueantes propios. Opciones abiertas, ninguna urgente:
-- **Acción de la usuaria pendiente de esta sesión**: tocar "Actualizar plantilla en GoHighLevel" en las 2 piezas de email corregidas para resubir el HTML ya arreglado (las plantillas existentes en GHL todavía tienen el bug viejo del marcador — esto es independiente del incidente de restauración, que ya quedó resuelto).
-- Pendiente de la usuaria: confirmar que el contenido de la pieza `bdd7a4f0…` (campaña "Ganá tu Año") quedó exactamente como lo tenía cargado — se restauró de memoria de la sesión (no hubo que recuperarlo de un backup), vale una revisión visual rápida antes de dar por cerrado el incidente.
-- Probar en producción el botón "Vista previa"/"Editar HTML" nuevo, una vez que se pushee este cambio (requiere la migración `0003` corrida en el proyecto de Supabase real antes del deploy — ver Decisión 10).
+- **Prioridad acordada con la usuaria**: arrancar Fase 5C (YouTube) — ver checklist arriba, empieza por confirmar alcance (¿solo Shorts?) y credenciales de Google Cloud/YouTube Data API v3.
+- Acción de la usuaria pendiente de una sesión anterior: tocar "Actualizar plantilla en GoHighLevel" en las 2 piezas de email corregidas para resubir el HTML ya arreglado (las plantillas existentes en GHL todavía tienen el bug viejo del marcador).
+- Pendiente de la usuaria: confirmar que el contenido de la pieza `bdd7a4f0…` (campaña "Ganá tu Año") quedó exactamente como lo tenía cargado tras el incidente de restauración de esta sesión (ya resuelto, solo falta su ok visual).
+- Fase 5D (LinkedIn) y Fase 5 (Meta) quedan después de YouTube, en ese orden — ver Decisión 11.
 - Fase 5 (Meta/Instagram/Facebook) — bloqueada hasta que la usuaria resuelva el permiso de Admin en el Business Manager dueño de la app de Meta.
 - Más pulido de UI si surge algo al usarla (Fase 6), incluyendo QA visual del selector de marca/login contra el resto de la app.
