@@ -36,11 +36,31 @@ Convención: `[ ]` pendiente, `[~]` en curso, `[x]` hecho.
 - [x] Filtros en la vista Lista por fecha (rango desde/hasta), plataforma y estado (chips multi-select, colores de estado reutilizados). El rango de fechas de Lista es independiente del navegador de mes — las flechas de mes siguen controlando solo Agenda. `ListaView.tsx` recibe el dataset completo de la marca en vez del acotado al mes.
 - [x] Iteración de UX sobre los filtros (pedido de la usuaria tras ver el primer intento): colapsados por defecto detrás de un botón "Filtrar" (con puntito indicador si hay filtros activos) en vez de siempre visibles — evita el peso visual de 3 filas de controles permanentes. El stats-strip ahora refleja lo que Lista efectivamente muestra (todo, o el subconjunto filtrado) en vez de quedarse pegado al mes de Agenda, que daba contadores en 0 mientras la tabla de abajo tenía datos — ya no hay esa desconexión. Estado y cálculo de filtros viven en `Tablero.tsx` (father-owns-state), `ListaView.tsx` quedó presentacional. No se agregó una vista/tab nueva de "Filtros" — se descartó por fragmentar la navegación sin necesidad, ya que filtros y Lista siempre se usan juntos.
 
-## Fase 3 — Autenticación y multi-marca
-**Pospuesta a pedido de la usuaria (2026-09-07)**: prefiere seguir probando la app en el navegador sin tener que loguearse cada vez mientras se sigue iterando sobre la UI/funcionalidad. No arrancar esta fase hasta que ella lo pida explícitamente.
-- [ ] Login con email + password (Supabase Auth).
-- [ ] Selector de marca en el header (reemplaza el `kicker` fijo "Mastery Haus"), scoping de todas las queries por `brand_id`.
-- [ ] Alta de usuarios/colaboradores.
+## Fase 3 — Autenticación y multi-marca ✅
+- [x] Login con email + password (Supabase Auth). `src/proxy.ts` (reemplaza a `middleware.ts`,
+  deprecado en Next.js 16 — ver Decisión 7) redirige a `/login` si no hay sesión, refrescando
+  cookies en cada request. `src/app/login/` (page + `LoginForm.tsx` con `useActionState` +
+  Server Action `login`). Logout vía Server Action `src/app/actions.ts` `logout()`, pasada como
+  prop a `Tablero`. Las API routes de `pieces` (`route.ts`, `[id]/route.ts`,
+  `[id]/ghl-template/route.ts`) devuelven 401 si no hay sesión, vía `requireUser()` de
+  `src/lib/supabase/server.ts` — se mantiene `supabaseAdmin` (service role) para las queries
+  reales, ver Decisión 7.
+- [x] Selector de marca en el header (reemplaza el `kicker` fijo "Mastery Haus"): `page.tsx`
+  ahora trae todas las filas de `brands` y resuelve la marca activa desde `?brand=<slug>` en
+  la URL (default a Mastery Haus). `Tablero.tsx` reemplaza el `<span className="kicker">` por
+  un `<select>` que navega con `router.push`. Todo usuario logueado ve ambas marcas — no hay
+  tabla puente usuario↔marca (decisión explícita, ver Decisión 7). Los `POST /api/pieces`
+  (crear/duplicar pieza) ahora mandan `brand_slug` explícito en vez de depender del default
+  del server; `PATCH`/`DELETE /api/pieces/[id]` no llevan brand en el payload (no hace falta:
+  cualquier usuario ve/edita ambas marcas).
+- [x] Alta de usuarios/colaboradores: a mano desde el dashboard de Supabase (Authentication →
+  Users → Add user). Sin pantalla de registro en la app — decisión explícita de la usuaria.
+- [x] Verificado de punta a punta con Playwright headless (usuario de prueba creado y borrado
+  después vía API admin de Supabase): `/` sin sesión → redirige a `/login`; login real → ve
+  Agenda con datos reales; cambio de marca → URL pasa a `?brand=sofia-contreras` sin errores
+  de consola ni hydration mismatch; `/api/pieces` sin cookies → 401 JSON; logout → `/login`,
+  y revisitar `/` después confirma que la sesión quedó realmente cerrada (no solo la UI).
+  `npm run build` limpio, reconoce `src/proxy.ts` como "ƒ Proxy (Middleware)".
 
 ## Fase 4 — Persistencia real (reemplazo del mecanismo de autopublish del mockup) ✅
 - [x] CRUD completo de piezas contra la DB (crear, editar, duplicar, borrar) vía API routes — resuelto en Fase 2 junto con la decisión de autosave.
@@ -80,16 +100,17 @@ Ver Decisión 6 en DECISIONS.md para el contexto completo. Alcance: solo platafo
 
 ## Estado actual (última sesión: 2026-09-08)
 
-Fases 0, 1, 2, 4 y 5B completas. La UI del Tablero de Salida está portada 1:1 (Agenda, Lista rediseñada con columnas compactas + filtros colapsables de fecha/plataforma/estado, stats, modal, FAB, CSV, botón "Guardar" por pieza con confirmación visual) y leyendo/escribiendo la tabla `pieces` real de Supabase vía API routes de Next.js, con autosave por campo + retry automático con backoff. Sin auth todavía (acceso directo, marca hardcodeada a Mastery Haus, pospuesto a pedido de la usuaria).
+Fases 0, 1, 2, 3, 4 y 5B completas. La UI del Tablero de Salida está portada 1:1 (Agenda, Lista rediseñada con columnas compactas + filtros colapsables de fecha/plataforma/estado, stats, modal, FAB, CSV, botón "Guardar" por pieza con confirmación visual) y leyendo/escribiendo la tabla `pieces` real de Supabase vía API routes de Next.js, con autosave por campo + retry automático con backoff. La app ahora requiere login (Supabase Auth) y tiene selector de marca real en el header (Mastery Haus / Sofia Contreras, ambas visibles para cualquier usuario logueado).
+
+**Fase 3 (auth + multi-marca) cerrada esta sesión**: login con email+password vía Supabase Auth (alta de usuarios a mano desde el dashboard, sin registro en la app), `src/proxy.ts` protege toda la app (redirige a `/login` si no hay sesión; reemplaza a `middleware.ts`, deprecado en Next.js 16 — ver Decisión 7 en DECISIONS.md), API routes de `pieces` devuelven 401 sin sesión pero siguen usando `supabaseAdmin`/service role para las queries reales (no se migró a RLS con la sesión del usuario — decisión explícita, equipo chico). Selector de marca reemplaza el `kicker` fijo; navega vía `?brand=<slug>` en la URL, sin tabla puente usuario↔marca (todos ven ambas marcas). Verificado de punta a punta con Playwright (login real, cambio de marca, logout con sesión efectivamente cerrada, 401 en API sin cookies, sin hydration mismatch) usando un usuario de prueba creado y borrado después vía API admin de Supabase.
 
 **Fase 5B (GoHighLevel) cerrada y funcionando en producción**: piezas de plataforma Email Marketing tienen un botón "Crear/Actualizar plantilla en GoHighLevel" que arma el HTML (copy + botón CTA vía marcador `{{cta}}`) y lo sube por API — probado de punta a punta contra la cuenta real, con credenciales ya cargadas en Vercel. Se investigó (y se descartó, por ahora) crear la campaign completa por API — GHL devuelve 401 incluso con el token con todos los scopes habilitados, es una restricción de plataforma, no de permisos. El flujo real hoy es: la app crea la plantilla, la usuaria elige lista/programa el envío a mano en GHL.
 
-Bugs reales encontrados y arreglados esta sesión y la anterior (ver DECISIONS.md para el detalle de cada uno): hydration mismatch por `new Date()` en SSR, overflow de inputs por `all: unset` pisando `box-sizing`, y el botón de GHL creaba una plantilla nueva en cada click en vez de actualizar la existente (dejaba huérfanas duplicadas — ya limpiadas en la cuenta real).
+Bugs reales encontrados y arreglados esta sesión y las anteriores (ver DECISIONS.md para el detalle de cada uno): hydration mismatch por `new Date()` en SSR, overflow de inputs por `all: unset` pisando `box-sizing`, el botón de GHL creaba una plantilla nueva en cada click en vez de actualizar la existente (dejaba huérfanas duplicadas — ya limpiadas en la cuenta real), y el rename de `middleware.ts` → `proxy.ts` en Next.js 16 (no es un bug de esta app, es un breaking change de la versión — ver Decisión 7).
 
 Repo en GitHub (público, org Mastery-Haus, `Mastery-Haus/mh-content-planner`), con convención de identidad git para toda la carpeta de proyectos vía `~/.gitconfig`.
 
 **Próximo paso al retomar**: sin bloqueantes propios. Opciones abiertas, ninguna urgente:
 - Arreglar el contenido de ejemplo real que quedó cargado (usa `[Nombre]` en vez de `{{contact.first_name}}`, y no tiene el marcador `{{cta}}` — revisar con la usuaria si hay más piezas de email con el mismo problema).
-- Fase 3 (login) — pospuesta a pedido explícito de la usuaria.
 - Fase 5 (Meta/Instagram/Facebook) — bloqueada hasta que la usuaria resuelva el permiso de Admin en el Business Manager dueño de la app de Meta.
-- Más pulido de UI si surge algo al usarla.
+- Más pulido de UI si surge algo al usarla (Fase 6).

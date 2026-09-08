@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import AgendaView from "./AgendaView";
 import IconSprite from "./IconSprite";
 import Icon from "./Icon";
@@ -24,7 +25,8 @@ import {
 } from "@/lib/pieces";
 
 interface Props {
-  brandName: string;
+  brands: { slug: string; name: string }[];
+  currentBrandSlug: string;
   initialPieces: Piece[];
   // "Hoy" calculado en el servidor al momento del render (string YYYY-MM-DD). Sirve como
   // snapshot de servidor para useSyncExternalStore (ver más abajo) — evita el hydration
@@ -32,6 +34,7 @@ interface Props {
   // previsible cuando el servidor corre en otra zona horaria que el visitante (p.ej.
   // Vercel en UTC vs. Argentina).
   serverToday: string;
+  logoutAction: () => Promise<void>;
 }
 
 type SaveState = "saved" | "pending" | "saving" | "error";
@@ -59,7 +62,8 @@ function getClientToday() {
   return toDateInputValue(new Date());
 }
 
-export default function Tablero({ brandName, initialPieces, serverToday }: Props) {
+export default function Tablero({ brands, currentBrandSlug, initialPieces, serverToday, logoutAction }: Props) {
+  const router = useRouter();
   const [pieces, setPieces] = useState<Piece[]>(initialPieces);
   // Hidration-safe: usa serverToday para el render del servidor y la primera pasada del
   // cliente (deben coincidir exactamente), y React sincroniza el valor real del navegador
@@ -260,7 +264,7 @@ export default function Tablero({ brandName, initialPieces, serverToday }: Props
       const res = await fetch("/api/pieces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, platform, format, angle }),
+        body: JSON.stringify({ date, platform, format, angle, brand_slug: currentBrandSlug }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -305,6 +309,7 @@ export default function Tablero({ brandName, initialPieces, serverToday }: Props
           portada: source.portada,
           notas: source.notas,
           cta_label: source.cta_label,
+          brand_slug: currentBrandSlug,
         }),
       });
       if (!res.ok) throw new Error("No se pudo duplicar la pieza");
@@ -400,7 +405,18 @@ export default function Tablero({ brandName, initialPieces, serverToday }: Props
 
       <header className="topbar">
         <div className="heading">
-          <span className="kicker">{brandName}</span>
+          <select
+            className="kicker brand-select"
+            value={currentBrandSlug}
+            onChange={(e) => router.push(`/?brand=${e.target.value}`)}
+            aria-label="Marca"
+          >
+            {brands.map((b) => (
+              <option key={b.slug} value={b.slug}>
+                {b.name}
+              </option>
+            ))}
+          </select>
           <h1>Tablero de Salida</h1>
           <div className="save-status" data-state={saveState}>
             <span className="dot" />
@@ -420,6 +436,11 @@ export default function Tablero({ brandName, initialPieces, serverToday }: Props
             <Icon name="i-plus" />
             Nueva pieza
           </button>
+          <form action={logoutAction}>
+            <button className="btn subtle" type="submit">
+              Cerrar sesión
+            </button>
+          </form>
         </div>
       </header>
 

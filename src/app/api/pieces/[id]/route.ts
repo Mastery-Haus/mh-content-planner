@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PIECE_COLUMNS, supabaseAdmin } from "@/lib/supabase-admin";
+import { requireUser } from "@/lib/supabase/server";
 import { EDITABLE_FIELDS, ESTADOS, PLATFORMS } from "@/lib/pieces";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, { params }: Params) {
+  const user = await requireUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const body = await request.json();
 
@@ -34,6 +38,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
+  const user = await requireUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const { error } = await supabaseAdmin.from("pieces").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

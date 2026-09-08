@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PIECE_COLUMNS, resolveBrandId, supabaseAdmin } from "@/lib/supabase-admin";
+import { requireUser } from "@/lib/supabase/server";
 import { EDITABLE_FIELDS, ESTADOS, PLATFORMS } from "@/lib/pieces";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const user = await requireUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   try {
-    const brandId = await resolveBrandId();
+    const brandSlug = request.nextUrl.searchParams.get("brand_slug") ?? undefined;
+    const brandId = await resolveBrandId(brandSlug);
     const { data, error } = await supabaseAdmin
       .from("pieces")
       .select(PIECE_COLUMNS)
@@ -19,9 +24,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await requireUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   try {
     const body = await request.json();
-    const { date, platform } = body;
+    const { date, platform, brand_slug } = body;
     if (!date || !platform) {
       return NextResponse.json({ error: "Faltan date/platform" }, { status: 400 });
     }
@@ -38,7 +46,7 @@ export async function POST(request: NextRequest) {
       if (key in body) row[key] = body[key];
     }
 
-    const brandId = await resolveBrandId();
+    const brandId = await resolveBrandId(brand_slug);
     const { data, error } = await supabaseAdmin
       .from("pieces")
       .insert({ brand_id: brandId, ...row })

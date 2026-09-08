@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PIECE_COLUMNS, supabaseAdmin } from "@/lib/supabase-admin";
+import { requireUser } from "@/lib/supabase/server";
 import { buildEmailHtml } from "@/lib/email-template";
 import { upsertGhlEmailTemplate } from "@/lib/ghl";
 import type { Piece } from "@/lib/pieces";
@@ -10,6 +11,9 @@ type Params = { params: Promise<{ id: string }> };
 // 'email', a partir de su copy + CTA (material = link del botón, cta_label = texto del
 // botón). Ver DECISIONS.md Decisión 6.
 export async function POST(_request: NextRequest, { params }: Params) {
+  const user = await requireUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   const { id } = await params;
 
   const { data: piece, error: fetchError } = await supabaseAdmin
