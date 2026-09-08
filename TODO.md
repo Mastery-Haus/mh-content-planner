@@ -78,14 +78,18 @@ Ver Decisión 6 en DECISIONS.md para el contexto completo. Alcance: solo platafo
 
 ---
 
-## Estado actual (última sesión: 2026-09-07)
+## Estado actual (última sesión: 2026-09-08)
 
-Fases 0, 1, 2 y 4 completas. La UI del Tablero de Salida está portada 1:1 (Agenda, Lista rediseñada con columnas compactas + filtros colapsables de fecha/plataforma/estado, stats, modal, FAB, CSV) y leyendo/escribiendo la tabla `pieces` real de Supabase vía API routes de Next.js, con autosave por campo + retry automático con backoff si falla el guardado. Sin auth todavía (acceso directo, marca hardcodeada a Mastery Haus).
+Fases 0, 1, 2, 4 y 5B completas. La UI del Tablero de Salida está portada 1:1 (Agenda, Lista rediseñada con columnas compactas + filtros colapsables de fecha/plataforma/estado, stats, modal, FAB, CSV, botón "Guardar" por pieza con confirmación visual) y leyendo/escribiendo la tabla `pieces` real de Supabase vía API routes de Next.js, con autosave por campo + retry automático con backoff. Sin auth todavía (acceso directo, marca hardcodeada a Mastery Haus, pospuesto a pedido de la usuaria).
 
-Bug real encontrado y arreglado esta sesión: hydration mismatch por usar `new Date()` directo durante el render en `Tablero`/`AgendaView` (SSR vs. cliente pueden diferir de zona horaria en producción). Se resolvió con `useSyncExternalStore` (snapshot de servidor vía prop `serverToday` desde `page.tsx`, corregido al del cliente real post-hidratación) — verificado forzando un reloj de cliente en otro mes que el servidor, sin warning y con el mes correcto. También se silenció con `suppressHydrationWarning` en `<body>` el ruido de extensiones de navegador (ColorZilla inyectando `cz-shortcut-listen`) — falso positivo no relacionado a nuestro código.
+**Fase 5B (GoHighLevel) cerrada y funcionando en producción**: piezas de plataforma Email Marketing tienen un botón "Crear/Actualizar plantilla en GoHighLevel" que arma el HTML (copy + botón CTA vía marcador `{{cta}}`) y lo sube por API — probado de punta a punta contra la cuenta real, con credenciales ya cargadas en Vercel. Se investigó (y se descartó, por ahora) crear la campaign completa por API — GHL devuelve 401 incluso con el token con todos los scopes habilitados, es una restricción de plataforma, no de permisos. El flujo real hoy es: la app crea la plantilla, la usuaria elige lista/programa el envío a mano en GHL.
 
-Fase 0 cerrada del todo esta sesión: env vars cargadas y verificadas en Vercel (deploy probado por la usuaria, funciona), y el repo subido a GitHub (público, org Mastery-Haus) con la convención de identidad git para toda la carpeta de proyectos.
+Bugs reales encontrados y arreglados esta sesión y la anterior (ver DECISIONS.md para el detalle de cada uno): hydration mismatch por `new Date()` en SSR, overflow de inputs por `all: unset` pisando `box-sizing`, y el botón de GHL creaba una plantilla nueva en cada click en vez de actualizar la existente (dejaba huérfanas duplicadas — ya limpiadas en la cuenta real).
 
-Fase 5B completa: integración real con GoHighLevel para crear plantillas de email por API (ver Decisión 6), probada de punta a punta contra la cuenta real. Se encontró y corrigió un problema real en el camino: el POST inicial a `/emails/builder` ignora el HTML — hace falta un segundo llamado a `/emails/builder/data` para que el contenido quede guardado de verdad (con `updatedBy` obligatorio). Falta solo cargar las credenciales de GHL en Vercel (ya están en `.env.local`).
+Repo en GitHub (público, org Mastery-Haus, `Mastery-Haus/mh-content-planner`), con convención de identidad git para toda la carpeta de proyectos vía `~/.gitconfig`.
 
-**Próximo paso al retomar**: la Fase 3 (login) sigue pospuesta a pedido de la usuaria. Opciones abiertas: cargar las credenciales de GHL en Vercel, más pulido de UI, o Fase 5 (Meta) en cuanto la usuaria resuelva el tema de permisos/admin del Business Manager dueño de la app.
+**Próximo paso al retomar**: sin bloqueantes propios. Opciones abiertas, ninguna urgente:
+- Arreglar el contenido de ejemplo real que quedó cargado (usa `[Nombre]` en vez de `{{contact.first_name}}`, y no tiene el marcador `{{cta}}` — revisar con la usuaria si hay más piezas de email con el mismo problema).
+- Fase 3 (login) — pospuesta a pedido explícito de la usuaria.
+- Fase 5 (Meta/Instagram/Facebook) — bloqueada hasta que la usuaria resuelva el permiso de Admin en el Business Manager dueño de la app de Meta.
+- Más pulido de UI si surge algo al usarla.
