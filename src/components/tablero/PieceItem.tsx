@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { useArmedDelete } from "./useArmedDelete";
 import { decodeTextFile } from "@/lib/decode-text-file";
+import EmailPreviewModal from "./EmailPreviewModal";
 import {
   FORMAT_LABEL,
   FREEFORM_META,
@@ -103,6 +104,8 @@ export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete,
       setLoadingMd(false);
     }
   }
+
+  const [showPreview, setShowPreview] = useState(false);
 
   // Botón "Guardar" propio de la pieza: fuerza el flush de lo pendiente (si hay) y da
   // una confirmación visual clara ahí mismo — sin esto, la única señal de que algo se
@@ -312,6 +315,11 @@ export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete,
 
         {isEmail && (
           <div className="field-row ghl-row">
+            <button className="btn subtle" onClick={() => setShowPreview(true)}>
+              <Icon name="i-material" />
+              Vista previa
+              {piece.email_html_override.trim() && " (editado a mano)"}
+            </button>
             <button className="btn subtle" disabled={creatingGhl} onClick={handleCreateGhlTemplate}>
               <Icon name="i-email" />
               {creatingGhl
@@ -322,6 +330,15 @@ export default function PieceItem({ piece, defaultOpen, onFieldChange, onDelete,
             </button>
             {piece.ghl_template_id && <span className="ghl-template-note">Plantilla GHL: {piece.ghl_template_id}</span>}
           </div>
+        )}
+
+        {isEmail && showPreview && (
+          <EmailPreviewModal
+            piece={piece}
+            onClose={() => setShowPreview(false)}
+            onFieldChange={onFieldChange}
+            onSavePiece={onSavePiece}
+          />
         )}
 
         <div className="field-row">

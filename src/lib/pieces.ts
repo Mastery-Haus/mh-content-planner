@@ -30,6 +30,10 @@ export interface Piece {
   // reutiliza ahí como el link del botón CTA — ver DECISIONS.md Decisión 6.
   cta_label: string;
   ghl_template_id: string;
+  // Fase 5B (extensión): HTML editado a mano que reemplaza al generado automáticamente
+  // desde copy/material/cta_label — vacío significa "sin override, generar automático".
+  // Ver DECISIONS.md Decisión 10.
+  email_html_override: string;
 }
 
 export const PLATFORMS: Platform[] = [
@@ -149,4 +153,5 @@ export const EDITABLE_FIELDS = [
   "notas",
   "publicado",
   "cta_label",
+  "email_html_override",
 ] as const;

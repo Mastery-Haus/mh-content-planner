@@ -33,11 +33,15 @@ export async function POST(_request: NextRequest, { params }: Params) {
   }
 
   try {
-    const html = buildEmailHtml({
-      bodyText: piece.copy,
-      ctaUrl: piece.material,
-      ctaLabel: piece.cta_label,
-    });
+    // Si la usuaria editó el HTML a mano (Decisión 10), ese HTML manda tal cual — no se
+    // regenera desde copy/material/cta_label.
+    const html = piece.email_html_override.trim()
+      ? piece.email_html_override
+      : buildEmailHtml({
+          bodyText: piece.copy,
+          ctaUrl: piece.material,
+          ctaLabel: piece.cta_label,
+        });
 
     const { templateId } = await upsertGhlEmailTemplate({
       existingTemplateId: piece.ghl_template_id,

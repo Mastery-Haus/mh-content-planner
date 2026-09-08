@@ -99,6 +99,14 @@ Ver Decisión 9 en DECISIONS.md.
 - [x] Verificado con la función real `buildEmailHtml` (negrita/itálica/links se convierten bien, marcador `{{cta}}` no queda literal) y en navegador real con Playwright (Chrome del sistema vía `playwright-core`, sin instalarlo como dependencia del proyecto): login real, carga de archivo `.md` de prueba, contenido decodificado correctamente en el campo Copy. `npm run build` limpio.
 - [x] **Incidente durante la verificación (2026-09-08, ya resuelto)**: el script de prueba de Playwright apuntó mal al "primer" `<details class="piece">` de la vista Agenda y terminó subiendo el `.md` de prueba sobre la pieza real de producción `bdd7a4f0…` (campaña "Ganá tu Año") en vez de una pieza de prueba dedicada — el autosave (funcionando correctamente) persistió ese contenido de prueba en la DB real por unos minutos. Detectado de inmediato al verificar el autosave por otra vía, y restaurado el campo `copy` a su contenido real exacto (el mismo ya corregido en la Decisión 8 de esta misma sesión) vía API admin de Supabase. Se confirmó que ningún otro campo de esa pieza (`material`, `cta_label`, `estado`, `ghl_template_id`) ni la otra pieza de email se vieron afectados. Lección para el futuro: cualquier prueba de UI automatizada debe operar sobre una pieza creada exclusivamente para la prueba (y borrada al final), nunca sobre "la primera pieza visible" en una vista que mezcla datos reales.
 
+## Fase 5B — extensión: vista previa y edición manual del HTML del mail ✅ (2026-09-08)
+Ver Decisión 10 en DECISIONS.md.
+- [x] Migración `0003_email_html_override.sql`: columna `email_html_override` en `pieces` (texto, default `''`). Aplicada al proyecto real (hubo una confusión inicial de la usuaria corriendo el SQL en un proyecto de Supabase distinto al de la app — ver Decisión 10 para el detalle, no se tocó ningún dato real).
+- [x] Botón "Vista previa" junto al de GHL (solo piezas Email) abre un modal (`EmailPreviewModal.tsx`) con un iframe sandboxeado mostrando el HTML real tal cual se sube a GoHighLevel.
+- [x] Modo "Editar HTML": textarea con el HTML crudo, editable a mano. Al guardar, el HTML editado se persiste en `email_html_override` (mismo autosave de siempre) y pasa a ser lo que se usa — tanto en la vista previa como al crear/actualizar la plantilla en GHL — hasta que se toca "Volver a generar automático" (limpia el override). Editar Copy/CTA no pisa un override existente.
+- [x] `api/pieces/[id]/ghl-template` usa `email_html_override` si tiene contenido, si no regenera desde copy/material/cta_label como antes.
+- [x] Verificado en navegador real (Playwright + Chrome del sistema) contra una pieza de prueba creada y borrada exclusivamente para el test, localizada por un ángulo único (no "la primera pieza de la lista" — lección de la vez anterior): vista previa muestra el markdown ya convertido a HTML, edición manual se guarda (PATCH 200), nota de "editado a mano" aparece y desaparece correctamente al resetear. `npm run build` limpio.
+
 ## Fase 6 — Pulido y salida a producción
 - [ ] QA visual comparando contra `mockup.html` (pixel a pixel, ambos temas claro/oscuro).
 - [ ] Probar el flujo completo con datos reales de ambas marcas.
@@ -125,8 +133,11 @@ Repo en GitHub (público, org Mastery-Haus, `Mastery-Haus/mh-content-planner`), 
 
 Misma sesión, a pedido de la usuaria: se agregó carga de copy desde archivo `.md` + soporte de markdown inline real (negrita/itálica/links) en el mail generado — ver Fase 5B (extensión) arriba y Decisión 9 en DECISIONS.md. Durante la verificación en navegador hubo un incidente (script de prueba mal apuntado sobrescribió por unos minutos el copy real de la pieza de producción `bdd7a4f0…`) detectado y restaurado en la misma sesión — documentado en detalle en Fase 5B y Decisión 9, sin impacto final.
 
+Misma sesión, tercer pedido de la usuaria: vista previa del mail + edición manual del HTML con override persistente — ver Fase 5B (segunda extensión) arriba y Decisión 10 en DECISIONS.md. Verificado en navegador contra una pieza de prueba dedicada (creada y borrada por API, nunca "la primera pieza visible" — aplicando la lección del incidente anterior).
+
 **Próximo paso al retomar**: sin bloqueantes propios. Opciones abiertas, ninguna urgente:
 - **Acción de la usuaria pendiente de esta sesión**: tocar "Actualizar plantilla en GoHighLevel" en las 2 piezas de email corregidas para resubir el HTML ya arreglado (las plantillas existentes en GHL todavía tienen el bug viejo del marcador — esto es independiente del incidente de restauración, que ya quedó resuelto).
 - Pendiente de la usuaria: confirmar que el contenido de la pieza `bdd7a4f0…` (campaña "Ganá tu Año") quedó exactamente como lo tenía cargado — se restauró de memoria de la sesión (no hubo que recuperarlo de un backup), vale una revisión visual rápida antes de dar por cerrado el incidente.
+- Probar en producción el botón "Vista previa"/"Editar HTML" nuevo, una vez que se pushee este cambio (requiere la migración `0003` corrida en el proyecto de Supabase real antes del deploy — ver Decisión 10).
 - Fase 5 (Meta/Instagram/Facebook) — bloqueada hasta que la usuaria resuelva el permiso de Admin en el Business Manager dueño de la app de Meta.
 - Más pulido de UI si surge algo al usarla (Fase 6), incluyendo QA visual del selector de marca/login contra el resto de la app.
