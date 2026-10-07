@@ -251,3 +251,24 @@ Registro de decisiones de arquitectura/producto, en orden cronológico. Cada ent
 - **Footer**: se agregó un link "Cómo funciona el Tablero" al footer de `Tablero.tsx`, apuntando a `/ayuda` — es el único lugar de la UI real desde donde se puede llegar a este SOP.
 
 **Verificación**: recorrido con Playwright + Chrome del sistema (usuario de prueba creado y borrado por API, nunca "el primer usuario visible"): `/ayuda` sin sesión redirige a `/login` igual que `/`; con sesión se ve completa en tema claro y oscuro (capturas revisadas); el link del footer del Tablero apunta a `/ayuda` con el texto correcto. `npm run build` limpio.
+
+---
+
+## 2026-10-07 — Decisión 16: carga de piezas desde el chat (skill `cargar-tablero`)
+
+**Contexto**: el contenido ya se produce con roles de Claude (copywriter → diseñador gráfico → entrega en la Bóveda de Drive), pero la carga al tablero seguía siendo manual. El usuario pidió que lo que se define en el chat (contenido, caption, fecha, redes) quede cargado solo.
+
+**Decisión**:
+- `scripts/cargar-piezas.mjs` recibe un JSON de piezas y hace upsert en `pieces` con la service role key (mismo patrón que `import-csv.mjs`). Valida marca, fecha, plataforma, estado y formato contra `src/lib/pieces.ts` (no se duplica el mapeo). Acepta etiquetas o códigos de formato.
+- Una pieza puede llevar `platforms: [...]` y se expande a una fila por plataforma: así está cargado todo el histórico (mismo contenido cross-posteado = una fila por red).
+- **Upsert, no solo insert**: clave marca + fecha + plataforma + ángulo normalizado (misma que la Decisión 14). Si existe, actualiza solo los campos que vienen con contenido; nunca pisa con vacío y no toca piezas ya `publicado`. Correrlo dos veces no duplica.
+- **La marca define la cuenta de Instagram**: Mastery Haus → `instagram_mh`, Sofia Contreras → `instagram`. El script lo fuerza aunque venga la otra (regla del usuario: hasta ahora se elegía a mano y quedaron 14 piezas cruzadas entre marca y cuenta).
+- **Material por tamaño**: si `material` es la carpeta local de la pieza en la Bóveda y tiene las subcarpetas `4:5` y `1:1`, cada plataforma recibe el link a la suya: Instagram (`instagram`/`instagram_mh`) usa `4:5` y el resto `1:1` (regla del usuario). Si no existen esas subcarpetas, se usa la carpeta tal cual.
+- **Estado por defecto `listo`**: decisión del usuario, se carga al tablero solo lo que ya está listo para publicar.
+- **Siempre vista previa + confirmación**: `--dry-run` primero y se muestra la tabla antes de escribir. Decisión del usuario.
+- `material`/`portada` aceptan la ruta local de Google Drive Desktop y la convierten al link real leyendo el atributo extendido `com.google.drivefs.item-id#S` (carpeta → `drive/folders/<id>`, archivo → `file/d/<id>/view`). Se verificó que da exactamente el mismo link que se había cargado a mano para "Escenario: creador de contenido". Evita el conector MCP de Drive (lento y caro en contexto).
+- El skill vive a nivel usuario (`~/.claude/skills/cargar-tablero/`) para usarlo desde cualquier carpeta (Marketing MH, VS Code, app de escritorio). El rol `disenador_grafico.md` lo ofrece después de entregar en la Bóveda.
+
+**Descartado (por ahora)**: un servidor MCP en Vercel para cargar desde claude.ai o el celular. El usuario trabaja desde la app de escritorio y VS Code, donde alcanza con el script local.
+
+**Verificación**: simulación con casos válidos e inválidos; carga real de piezas de prueba (3 plataformas + ruta local de Drive), re-ejecución confirmando que actualiza sin duplicar, y borrado por id exacto después.

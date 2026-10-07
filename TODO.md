@@ -149,6 +149,14 @@ Ver Decisión 15 en DECISIONS.md.
 - [x] Link "Cómo funciona el Tablero" agregado al footer del Tablero (`Tablero.tsx`), apunta a `/ayuda`.
 - [x] Verificado en navegador real (Playwright + Chrome del sistema, usuario de prueba creado y borrado por API): `/ayuda` sin sesión redirige a `/login` igual que el resto de la app; con sesión se ve completa en tema claro y oscuro; el link del footer apunta bien. `npm run build` limpio.
 
+## Carga de piezas desde el chat (skill `cargar-tablero`) ✅ (2026-10-07)
+Ver Decisión 16 en DECISIONS.md.
+- [x] `scripts/cargar-piezas.mjs`: upsert de piezas desde JSON, validación contra `src/lib/pieces.ts`, multi-plataforma, `--dry-run`, ruta local de Drive Desktop → link de Drive.
+- [x] Skill `~/.claude/skills/cargar-tablero/SKILL.md` (vista previa + confirmación, estado `listo` por defecto).
+- [x] Rol `disenador_grafico.md` (Marketing MH) ofrece cargar al tablero después de entregar en la Bóveda.
+- [ ] Sumar el mismo paso a otros roles que entreguen piezas (editor de video, historias IG) cuando se use.
+- [ ] (Opcional, más adelante) servidor MCP en Vercel para cargar desde claude.ai/celular.
+
 ## Fase 6 — Pulido y salida a producción
 - [ ] QA visual comparando contra `mockup.html` (pixel a pixel, ambos temas claro/oscuro).
 - [ ] Probar el flujo completo con datos reales de ambas marcas.
